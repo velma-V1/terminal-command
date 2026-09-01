@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class SlashCommand:
+    name: str
+    description: str
+
+
+class CommandRegistry:
+    def __init__(self, commands: list[SlashCommand]):
+        self._commands = {command.name: command for command in commands}
+
+    @classmethod
+    def default(cls) -> "CommandRegistry":
+        return cls(
+            [
+                SlashCommand("/doctor", "Check local runtime and optional tools"),
+                SlashCommand("/exit", "Exit terminal-command"),
+                SlashCommand("/help", "Show commands and input modes"),
+                SlashCommand("/history", "Show recent action evidence"),
+            ]
+        )
+
+    def names(self) -> list[str]:
+        return sorted(self._commands)
+
+    def resolve(self, text: str) -> SlashCommand | None:
+        key = text.strip().split(maxsplit=1)[0].lower()
+        return self._commands.get(key)
+
+    def completions(self, prefix: str) -> list[str]:
+        lowered = prefix.lower()
+        return [name for name in self.names() if name.startswith(lowered)]
+
+    def help_text(self) -> str:
+        lines = ["Input modes: normal shell command, natural language, or /command."]
+        lines.extend(f"{name:<10} {self._commands[name].description}" for name in self.names())
+        return "\n".join(lines)
