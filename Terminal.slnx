@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Terminal.Core/Terminal.Core.csproj" />
+  <Project Path="tests/Terminal.Core.Tests/Terminal.Core.Tests.csproj" />
+</Solution>
