@@ -4,7 +4,7 @@
 
 **Architecture decision:** Windows remains authority. SQLite is the authoritative local operational journal using WAL + synchronous FULL for consequential state. Windows process trees use Job Objects as the strong cancellation boundary. Linux execution is owned by the Linux agent and uses cgroup v2 when available, with a process-group fallback. WSL control uses the existing bounded framed protocol over one persistent child process; TCP/gRPC is not foundational.
 
-**Research basis:** SQLite documents WAL + FULL as ACID/durable across power loss; SQLite allows one concurrent writer, so state transitions use short write transactions and explicit busy handling. Windows Job Objects manage/terminate process trees as a unit. .NET's generic `Kill(entireProcessTree: true)` does not guarantee descendants have exited when the parent reports exit, so it is not the strongest lifecycle primitive. Linux cgroup v2 `cgroup.kill` kills the entire descendant tree and handles concurrent forks/migrations.
+**Research basis:** SQLite documents WAL + FULL as ACID/durable across power loss; SQLite allows one concurrent writer, so state transitions use short write transactions and explicit busy handling. Windows Job Objects manage/terminate process trees as a unit. Windows process creation must use `CREATE_SUSPENDED` so the child can be assigned to Terminal's Job Object before any child code can spawn descendants. `STARTUPINFOEX` + `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` restricts inherited handles to the exact redirected standard handles. Microsoft explicitly warns that inherited handles can leak files, sockets, and tokens. Linux cgroup v2 `cgroup.kill` kills the entire descendant tree and handles concurrent forks/migrations.
 
 ## Task 1 — SQLite operational store
 
@@ -70,13 +70,20 @@ No real OS process launch yet. Tests prove:
 Create `Terminal.Windows` project.
 
 Implement noninteractive Windows process supervision first:
-- explicit executable + argv, no shell by default;
-- redirected bounded stdout/stderr streaming;
-- Windows Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`;
-- cancel/timeout -> terminate Job Object -> wait for process boundary completion;
-- no inherited handles beyond explicit pipes;
-- working directory/environment passed explicitly;
-- resource accounting hooks.
+- explicit executable + argv; no implicit shell;
+- construct a writable Windows command line with correct argv quoting while passing the executable separately as `lpApplicationName`;
+- build an explicit Unicode environment block from the parent environment plus the Action's environment delta;
+- redirect bounded stdout/stderr and continuously drain both pipes;
+- create child pipe/NUL handles as inheritable but use `STARTUPINFOEX` + `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` so **only** the explicit standard handles can cross into the child;
+- create the process with `CREATE_SUSPENDED | EXTENDED_STARTUPINFO_PRESENT | CREATE_UNICODE_ENVIRONMENT`;
+- create/configure a Windows Job Object with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` and job-wide memory limit when the Action declares one;
+- assign the still-suspended process to the Job Object **before** `ResumeThread`; never use `Process.Start()` followed by best-effort assignment;
+- cancel/timeout -> terminate the Job Object -> wait for process boundary completion -> finish draining pipes;
+- query Job Object accounting before closing it so peak memory/CPU accounting can enter execution evidence;
+- working directory and environment are passed explicitly;
+- all native handles/attribute lists/environment allocations have deterministic cleanup on every failure path.
+
+Tests must prove explicit argv/working-directory/environment behavior, bounded output while still draining, timeout/cancel semantics, child-tree termination, and resource-accounting availability on Windows. Pure command-line quoting tests run on all CI operating systems.
 
 ConPTY interactive hosting is a separate follow-on task after noninteractive lifecycle tests are green.
 
@@ -125,3 +132,4 @@ WSL end-to-end remains a required real-Windows integration gate because GitHub-h
 - Do not add interactive ConPTY until noninteractive lifecycle is proven.
 - Do not claim Linux cgroup isolation when only process-group fallback is active.
 - Do not permit the executor to recalculate policy or invent Actions.
+- Do not accept a Windows child process assignment race; Job membership must be established while the primary thread is suspended.
