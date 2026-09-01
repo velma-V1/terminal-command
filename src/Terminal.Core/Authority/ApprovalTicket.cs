@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-
 namespace Terminal.Core.Authority;
 
 public enum ApprovalValidation
@@ -7,82 +5,79 @@ public enum ApprovalValidation
     Valid,
     WrongAction,
     Expired,
-    Consumed
+    Consumed,
+    NotFound
 }
 
 public readonly record struct ApprovalTicketUseResult(
     ApprovalValidation Validation,
-    ApprovalTicket Ticket);
+    ApprovalTicket? Ticket);
 
 public sealed record ApprovalTicket
 {
     private ApprovalTicket(
         Guid ticketId,
+        Guid actionId,
         string actionHash,
         DateTimeOffset issuedAt,
         DateTimeOffset expiresAt,
-        string nonceHash,
         DateTimeOffset? consumedAt)
     {
         TicketId = ticketId;
+        ActionId = actionId;
         ActionHash = actionHash;
         IssuedAt = issuedAt;
         ExpiresAt = expiresAt;
-        NonceHash = nonceHash;
         ConsumedAt = consumedAt;
     }
 
     public Guid TicketId { get; }
+    public Guid ActionId { get; }
     public string ActionHash { get; }
     public DateTimeOffset IssuedAt { get; }
     public DateTimeOffset ExpiresAt { get; }
-    public string NonceHash { get; }
     public DateTimeOffset? ConsumedAt { get; }
 
     public static ApprovalTicket Issue(
+        Guid actionId,
         string actionHash,
         DateTimeOffset now,
-        TimeSpan ttl,
-        ReadOnlySpan<byte> nonce)
+        TimeSpan ttl)
     {
-        if (string.IsNullOrWhiteSpace(actionHash))
+        if (actionId == Guid.Empty)
         {
-            throw new ArgumentException("Action hash must not be empty.", nameof(actionHash));
+            throw new ArgumentException("Action ID must not be empty.", nameof(actionId));
         }
+
+        ValidateSha256(actionHash);
 
         if (ttl <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(ttl), "TTL must be positive.");
         }
 
-        if (nonce.IsEmpty)
-        {
-            throw new ArgumentException("Nonce must not be empty.", nameof(nonce));
-        }
-
-        var nonceDigest = SHA256.HashData(nonce);
         return new ApprovalTicket(
             Guid.NewGuid(),
+            actionId,
             actionHash,
             now,
             now.Add(ttl),
-            Convert.ToHexString(nonceDigest).ToLowerInvariant(),
             consumedAt: null);
     }
 
-    public ApprovalValidation Validate(string actionHash, DateTimeOffset now)
+    public ApprovalValidation Validate(Guid actionId, string actionHash, DateTimeOffset now)
     {
+        if (ActionId != actionId || !string.Equals(ActionHash, actionHash, StringComparison.Ordinal))
+        {
+            return ApprovalValidation.WrongAction;
+        }
+
         if (ConsumedAt is not null)
         {
             return ApprovalValidation.Consumed;
         }
 
-        if (!string.Equals(ActionHash, actionHash, StringComparison.Ordinal))
-        {
-            return ApprovalValidation.WrongAction;
-        }
-
-        if (now > ExpiresAt)
+        if (now >= ExpiresAt)
         {
             return ApprovalValidation.Expired;
         }
@@ -90,22 +85,17 @@ public sealed record ApprovalTicket
         return ApprovalValidation.Valid;
     }
 
-    public ApprovalTicketUseResult Consume(string actionHash, DateTimeOffset now)
+    internal ApprovalTicket MarkConsumed(DateTimeOffset now)
+        => new(TicketId, ActionId, ActionHash, IssuedAt, ExpiresAt, now);
+
+    private static void ValidateSha256(string actionHash)
     {
-        var validation = Validate(actionHash, now);
-        if (validation != ApprovalValidation.Valid)
+        if (actionHash is null || actionHash.Length != 64 || actionHash.Any(static c => !IsLowerHex(c)))
         {
-            return new ApprovalTicketUseResult(validation, this);
+            throw new ArgumentException("Action hash must be a 64-character lower-case SHA-256 hex value.", nameof(actionHash));
         }
-
-        var consumed = new ApprovalTicket(
-            TicketId,
-            ActionHash,
-            IssuedAt,
-            ExpiresAt,
-            NonceHash,
-            now);
-
-        return new ApprovalTicketUseResult(ApprovalValidation.Valid, consumed);
     }
+
+    private static bool IsLowerHex(char value)
+        => value is >= '0' and <= '9' or >= 'a' and <= 'f';
 }
