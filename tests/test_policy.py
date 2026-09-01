@@ -14,6 +14,12 @@ def test_read_only_command_auto_allows():
     assert result.risk is RiskLevel.READ_ONLY
 
 
+def test_explicit_requires_approval_metadata_is_authoritative():
+    result = evaluate(["python", "-m", "safe-looking-tool"], metadata={"requires_approval": True, "read_only": True, "capability_id": "update.prepare"})
+    assert result.decision is PolicyDecision.REQUIRE_APPROVAL
+    assert result.risk is RiskLevel.MUTATING
+
+
 def test_mutating_command_requires_approval():
     result = evaluate(["git", "commit", "-m", "change"])
     assert result.decision is PolicyDecision.REQUIRE_APPROVAL
