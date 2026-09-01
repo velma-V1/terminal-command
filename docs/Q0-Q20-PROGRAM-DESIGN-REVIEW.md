@@ -1,17 +1,23 @@
-# Q0–Q32 + Q∞ Absolute-Value Program Admission Review
+# Q−1, Q0–Q32 + Q∞ Absolute-Value Program Admission Review
 
 This is the **hard architectural admission gate** for Terminal Command.
 
-The target is a **deterministic-first autonomous computer engineering and assurance system** that remains an excellent everyday terminal while being able to inspect, test, attack-test authorized systems, diagnose, repair, update, recover, verify, and maintain software and machines with minimal babysitting. AI is optional reasoning acceleration—not the operating foundation, authority source, or substitute for deterministic structure.
+Terminal Command's target is a **deterministic-first autonomous computer engineering and assurance system** that remains an excellent everyday terminal while being able to inspect, understand, test, attack-test authorized systems, diagnose, repair, update, recover, verify, and maintain software and machines with minimal babysitting. AI is optional reasoning acceleration—not the operating foundation, authority source, or substitute for deterministic structure.
 
-The design goal is not minimum code and not maximum feature count. It is:
+The optimization target is:
 
 > **maximum verified capability and autonomy with the minimum permanent machinery required to achieve it.**
 
+The review must reject both failure modes:
+
+- **underbuilding** — simplicity that removes useful capability, coverage, autonomy, proof, recovery, or everyday value;
+- **overbuilding** — permanent machinery that cannot beat a simpler composition on measurable value.
+
 ## Non-negotiable laws
 
-- **UNKNOWN IS NOT SUCCESS.** Unknown, conflicting, partial, or insufficient evidence stays explicit.
+- **UNKNOWN IS NOT SUCCESS.** Unknown, conflicting, partial, or insufficient evidence remains explicit.
 - **MOSTLY WORKS IS NOT COMPLETE.** Unsupported boundaries must be named and measured.
+- **HYPE/HEARSAY IS NOT FALSE UNTIL FALSIFIED.** Treat unconventional claims as active hypotheses. Do not accept them as truth, but do not discard them because they are unpopular, unreviewed, strange, old, abandoned, proprietary, or difficult to believe. Extract the mechanism and attempt to disprove or validate it.
 - **“THE MODEL CAN HANDLE IT” IS NOT ARCHITECTURE.** Use deterministic structure or proven tools whenever they can solve the class reliably.
 - **EXIT CODE 0 IS NOT PROOF.** Consequential outcomes require independent postconditions.
 - **NO ROLLBACK CLAIM WITHOUT A PROVEN RECOVERY METHOD.**
@@ -19,81 +25,226 @@ The design goal is not minimum code and not maximum feature count. It is:
 - **NO CORE ADMISSION BY CONVENIENCE.** Core exists only for cross-cutting invariants or proven system-wide value.
 - **NO CUSTOM REIMPLEMENTATION WHEN A BETTER MATURE PRIMITIVE EXISTS.** Own orchestration, authority, evidence, and composition; reuse infrastructure.
 - **NO SILENT DEFECT ESCAPE.** If health cannot be proven, return a non-success state.
-- **NO FEATURE COUNTS AS HIGH VALUE IF IT DAMAGES DAILY USABILITY.** Heavy assurance machinery stays dormant until needed.
-- **NO BLOAT WITHOUT CAPABILITY GAIN.** Permanent machinery must remove duplicated complexity/risk or add measurable capability unavailable through a simpler composition.
+- **NO SINGLE TOOL GETS TO DEFINE TRUTH.** Important conclusions require independent challenge where practical.
+- **NO AUTOMATION WITHOUT A KNOWN FAILURE BOUNDARY.** Automatic work must know what can go wrong and how failure is detected.
+- **NO BLOAT WITHOUT CAPABILITY GAIN.** Permanent machinery must remove duplicated risk/complexity or add measurable capability unavailable through a simpler composition.
 - **NO CAPABILITY LOSS FOR SIMPLICITY.** Reduce duplication and ceremony—not coverage, proof strength, autonomy, recovery, or useful breadth.
-- **NO SINGLE TOOL GETS TO DEFINE TRUTH.** Independent evidence must challenge important conclusions.
-- **NO AUTOMATION WITHOUT A KNOWN FAILURE BOUNDARY.** Automatic work must know what can go wrong and how that failure is detected.
+- **NO WINNER BEFORE DISCOVERY.** A tournament among mediocre candidates is still a mediocre architecture.
 
-A failed hard gate means **reject, redesign, isolate outside core, or explicitly downgrade the capability claim**.
+A failed hard gate means **reject, redesign, isolate outside core, keep experimental, or explicitly downgrade the capability claim**.
 
 ---
 
-# Mandatory Tournament Rule
+# Q−1 — Under-Every-Rock Discovery Gate
 
-Every proposed component, architecture, dependency, workflow, model, service, or custom subsystem must compete against at least:
+Q−1 runs **before Q0–Q32, before every major architectural decision, before adding a major dependency, and before declaring any tournament winner**.
 
-1. **Do nothing** — is the capability actually necessary?
-2. **Existing mature primitive** — can the OS/library/tool already solve it better?
-3. **Adapter** — can Terminal Command merely expose that mature primitive safely?
-4. **Composition** — can existing capabilities/workflows produce the same result?
-5. **Deterministic custom mechanism** — is custom structure justified?
-6. **AI-assisted mechanism** — does AI add measurable capability beyond deterministic structure?
-7. **Competing architecture(s)** — what is the strongest credible alternative?
+The goal is not to gather many links. The goal is to discover mechanisms we did not already know existed and prevent familiarity, popularity, benchmark hype, or model memory from defining the candidate pool.
 
-Score each on separate evidence dimensions:
+## Q−1A — Did we search the full evidence universe?
+
+Where relevant, search across:
+
+- official docs, standards, RFCs, specifications, source code, reference implementations, changelogs and design notes;
+- peer-reviewed papers, preprints, theses, dissertations, workshop papers, replication studies, negative results, surveys, citation graphs and cited-by chains;
+- conference talks, university lectures, seminars, technical presentations, demos and postmortems;
+- GitHub/GitLab/other repositories including source, branches, forks, releases, tags, issues, discussions, pull requests, abandoned experiments and benchmarks;
+- benchmark suites, leaderboards, evaluator source, failure datasets and reproducibility reports;
+- production incident reports, outage analyses, security advisories, CVEs, exploit analyses, bug-bounty reports and root-cause writeups;
+- mailing lists, standards discussions, rejected proposals and engineering design reviews;
+- mature commercial systems whose behavior/architecture is publicly inspectable;
+- niche technical blogs, personal research pages, obscure project sites, archived pages, forums, Hacker News, Reddit and specialist communities;
+- patents and proprietary architecture descriptions when they expose a mechanism that can be independently evaluated and legally/safely reproduced;
+- historical systems, discontinued projects and abandoned approaches that may contain useful mechanisms later rediscovered under new names;
+- adjacent disciplines including operating systems, distributed systems, databases, compilers, build systems, package management, formal methods, control theory, robotics, automated planning, program synthesis, program repair, reliability, observability, security, testing and verification;
+- hype, rumors, hearsay, demos and extraordinary claims as **discovery leads**;
+- multilingual sources and alternative terminology when the field is broader than English-language results.
+
+Search by mechanism, not just product names. Expand through authors, citations, forks, dependencies, related projects, competing terminology, historical terminology and “people who disagree.”
+
+**FAIL:** stopping because popular search results begin repeating themselves.
+
+## Q−1B — Did we deliberately search for the unfamiliar?
+
+Run separate passes:
+
+1. **Mainstream pass** — strongest accepted/current solutions.
+2. **Obscure pass** — niche repos, little-known tools, prototypes, old systems and abandoned ideas.
+3. **Adjacent-field pass** — search other disciplines for the same underlying problem under different terminology.
+4. **Failure pass** — CVEs, regressions, incidents, negative research, maintenance collapse and benchmark failures.
+5. **Novelty pass** — explicitly search for mechanisms absent from the current Terminal Command design.
+6. **Disconfirmation pass** — try to prove the current favorite wrong.
+7. **Combination pass** — search whether mechanisms dismissed individually become exceptional when composed.
+8. **What-did-we-miss pass** — search again after the architecture appears settled.
+
+A late discovery of a new mechanism class reopens the relevant tournament.
+
+## Q−1C — How are hype and hearsay treated?
+
+Use a **falsification-first hypothesis ledger**.
+
+Every material hype/hearsay claim becomes one of:
+
+- `ACTIVE_HYPOTHESIS` — not yet proven or disproven;
+- `SUPPORTED` — independent evidence materially supports the mechanism;
+- `PROVEN_WITHIN_SCOPE` — reproducible/formal/production evidence establishes the claim within explicit boundaries;
+- `REFUTED` — stronger evidence demonstrates the claim/mechanism does not work as stated;
+- `MISLEADING` — some mechanism is real but the advertised conclusion is exaggerated or benchmark-specific;
+- `UNTESTABLE_CURRENTLY` — insufficient access/evidence to resolve it.
+
+**Important:** lack of proof is not proof of falsehood. `ACTIVE_HYPOTHESIS` and `UNTESTABLE_CURRENTLY` remain in the research ledger when their potential upside is material.
+
+They may be sandbox-tested or used to inspire mechanisms, but consequential production architecture cannot rely on an unproven claim as if it were fact.
+
+Do not reject a hypothesis merely because:
+
+- the source is Reddit/a forum/a small repo;
+- no paper exists;
+- the author is unknown;
+- the project is abandoned;
+- the claim sounds implausible;
+- competitors dismiss it;
+- it failed in one unrelated environment;
+- it is not fashionable.
+
+To **refute** it, identify the actual mechanism and produce stronger contradictory evidence, failed reproduction under valid conditions, or a fundamental constraint that defeats the claimed value.
+
+## Q−1D — What is actually true about each serious candidate?
+
+For every serious candidate or mechanism, produce a master truth record:
+
+1. Exact claim.
+2. Underlying mechanism.
+3. Strongest supporting evidence.
+4. Strongest contradictory evidence.
+5. Reproducibility/replication quality.
+6. Scope where it actually works.
+7. Known blind spots and failure modes.
+8. Security/authority implications.
+9. Runtime/resource cost.
+10. Maintenance/dependency cost.
+11. Highest-value capability it adds.
+12. Smallest useful part that can be extracted.
+13. Whether an adapter gives most value without importing the system.
+14. Whether a simpler mechanism produces the same value.
+15. Complementary mechanisms it combines well with.
+16. Conflicting mechanisms it should not be combined with.
+17. Why similar systems succeeded, failed or were abandoned.
+18. What would falsify our current conclusion.
+
+Separate **the value of the mechanism** from **the quality of the project that currently implements it**.
+
+## Q−1E — When is discovery complete enough to choose?
+
+Do not use a source-count stopping rule. Stop only when:
+
+- all major mechanism classes discovered so far are represented;
+- obscure/adjacent/disconfirmation passes stop yielding new high-value classes;
+- citation/repository/author trails converge rather than opening unexplored high-value branches;
+- strong contradictions are resolved or explicitly marked UNKNOWN;
+- every discarded serious candidate has a recorded reason;
+- active hype/hearsay with meaningful upside has either been experimentally challenged, retained as unresolved, or scheduled for a bounded experiment;
+- the final “what did we miss?” pass produces only dominated variants, lower-value mechanisms or explicit unresolved unknowns.
+
+**AUTOMATIC FAIL:** architecture chosen from one search query, one benchmark, popularity, marketing, one model's memory, one ecosystem, or an unchallenged favorite.
+
+---
+
+# Mandatory Tournament-to-the-Death Rule
+
+Only candidates discovered through Q−1 may reach a final architectural decision.
+
+Every proposed component, architecture, dependency, workflow, model, service or custom subsystem competes against:
+
+1. **Do nothing.**
+2. **Best existing mature primitive.**
+3. **Thin adapter around that primitive.**
+4. **Composition of capabilities already present.**
+5. **Best deterministic custom mechanism.**
+6. **Best AI-assisted mechanism.**
+7. **Strongest competing architecture discovered under Q−1.**
+8. **Best hybrid of complementary mechanisms.**
+
+## Tournament rounds
+
+**Round 1 — Within-class elimination:** compare candidates solving the same mechanism.
+
+**Round 2 — Cross-class elimination:** compare fundamentally different ways to achieve the same outcome.
+
+**Round 3 — Hybrid challenge:** determine whether combining survivors materially exceeds each individual candidate.
+
+**Round 4 — Ablation:** remove each component from the proposed winner. If nothing important becomes measurably worse, that component is bloat.
+
+**Round 5 — Adversarial challenge:** search explicitly for where the winner fails and where a losing candidate wins.
+
+**Round 6 — Simplicity challenge:** attempt to reproduce the same capability with less permanent machinery.
+
+**Round 7 — Capability challenge:** attempt to increase capability without disproportionate added machinery.
+
+Do not hide tradeoffs in one flattering scalar score. Compare at least:
 
 ```text
 verified capability
 autonomy gain
-coverage / defect-detection gain
+defect/weakness coverage
 proof strength
 recovery strength
 daily usefulness
-latency / resource cost
-security / authority risk
+AI-off usefulness
+latency/startup/resource cost
+security/authority risk
 maintenance burden
 failure surface
 replaceability
+integration complexity
+evidence quality
 ```
 
-**Winner rule:** choose the smallest option that preserves the highest verified capability. If a more complex option does not produce a measurable increase in capability, safety, proof, recovery, or autonomy, reject it. If a simpler option reduces those qualities, reject the simplification.
+Reject Pareto-dominated candidates.
 
-No component enters core merely by winning against a weak alternative. It must win against the **best available alternative**.
+**Winner rule:** choose the smallest surviving architecture that preserves the highest verified capability. A more complex design must prove a meaningful gain in capability, autonomy, coverage, proof, recovery or safety. A simpler design must be rejected if it loses those qualities.
+
+No component enters core merely because it defeated weak alternatives. It must survive the strongest credible alternatives found under Q−1.
 
 ---
 
-# A — Mission, no-AI baseline, and architectural density
+# A — Mission, AI-off baseline, and architectural density
 
-## Q0 — Is Terminal Command materially more valuable than combining existing terminals, agents, scanners, CI, and scripts manually?
-**PASS requires:** one authority/orchestration/evidence layer that measurably reduces human babysitting while increasing verified completion, defect discovery, recovery, and everyday usefulness.
+## Q0 — Does Terminal Command justify existing as one operating layer?
 
-**KILL CONDITION:** if a simpler existing composition achieves the same verified outcomes with lower permanent complexity, do not build or keep the layer.
+PASS only if combining authority, orchestration, evidence and reusable capabilities measurably reduces babysitting while increasing verified completion, defect discovery, recovery and everyday utility versus the best simpler composition.
 
-## Q1 — Can the system remain highly useful with every model disabled?
-AI-off mode should still provide, where applicable:
+**Kill condition:** if an existing composition achieves essentially the same verified outcomes with less permanent complexity, do not build/keep the layer.
+
+## Q1 — Is it an excellent assistant with every AI model disabled?
+
+AI-off mode must retain the central value where technically possible:
+
 - real terminal behavior;
-- system/project discovery;
+- live system/project discovery;
 - deterministic planning of known work;
-- files/search/launch/system operations;
-- build/test/lint/type workflows;
-- known diagnostics and repair recipes;
-- scanners/fuzzers/property tests;
+- files/search/open/launch/system operations;
+- Git/build/test/lint/type workflows;
+- known diagnosis/repair recipes;
+- assurance tools and scanners;
+- authorized bounded attack-testing;
 - monitoring/jobs;
 - safe updates;
-- checkpoint/rollback;
-- evidence/verification.
+- checkpoints/rollback;
+- evidence and verification.
 
-**FAIL if:** AI-off mode merely starts but loses the system's central value.
+**FAIL:** AI-off merely launches but loses the system's core usefulness.
 
-## Q2 — Can routine known work be planned deterministically rather than by an LLM?
-Capabilities should expose machine-readable preconditions, effects/postconditions, dependencies, scope, cost, risk, trust boundary, verifier, recovery class, and idempotency/retry semantics.
+## Q2 — Can known work be planned deterministically?
 
-Use graph/HTN/classical planning or equivalent deterministic composition when it is simpler and more reliable than model planning.
+Capabilities should expose machine-readable preconditions, effects/postconditions, dependencies, scope, cost, risk, trust boundary, verifier, recovery and idempotency/retry semantics.
 
-**FAIL if:** known workflows require an LLM merely to choose the next known step.
+Use graph/HTN/classical planning or another deterministic composition method when it wins Q−1/tournament comparison.
 
-## Q3 — Does every permanent component pass the capability-density test?
+**FAIL:** an LLM is required merely to select the next already-known step.
+
+## Q3 — Does every permanent component pass capability-density and ablation?
+
 Evaluate:
 
 ```text
@@ -102,78 +253,50 @@ system-wide capability × frequency × verifiability × autonomy gain
 complexity × risk × maintenance × duplication
 ```
 
-If centralization does not remove duplicated correctness/safety logic or provide measurable global value, move it to a capability/workflow/adapter/view or remove it.
-
-**FAIL if:** the program becomes more impressive on paper without becoming more capable in use.
+Then remove the component experimentally. If capability, proof, safety, recovery, or meaningful daily utility does not measurably drop, remove or externalize it.
 
 ---
 
-# B — Real terminal and live machine understanding
+# B — Real terminal and live-machine understanding
 
-## Q4 — Does it behave like a real terminal before autonomous machinery is involved?
-Prove persistent cwd/environment where supported, interactive programs, streaming I/O, Ctrl-C/cancellation, resize, foreground/background process ownership, child-tree cleanup, bounded output, and reliable Windows behavior.
+## Q4 — Is it a real terminal rather than a command wrapper?
 
-Prefer ConPTY/PTY and OS primitives rather than building a terminal emulator.
+Require persistent session semantics, interactive processes, streaming I/O, cancellation/Ctrl-C, resize, foreground/background process ownership, process-tree cleanup, bounded output and reliable Windows behavior. Prefer ConPTY/PTY/OS primitives over reimplementation.
 
-**FAIL if:** it is fundamentally only captured subprocess calls.
+## Q5 — Can it continuously build an accurate live system graph?
 
-## Q5 — Can it automatically build and maintain an accurate system graph?
-Discover and relate, where available:
-- repositories/worktrees;
-- languages/frameworks;
-- build/test/lint/type systems;
-- packages/dependencies;
-- processes/services;
-- ports/network bindings;
-- WSL/containers;
-- databases/queues/caches;
-- frontend/backend/API boundaries;
-- CI/CD;
-- environment/configuration;
-- hardware/resource constraints;
-- update state;
-- security exposure.
+Discover and relate, when applicable:
 
-Every fact needs provenance, freshness, and invalidation semantics.
+repositories/worktrees, languages/frameworks, build/test/type/lint systems, dependencies, processes/services, ports, WSL/containers, databases/queues/caches, frontend/backend/API boundaries, CI/CD, configuration, hardware/resources, update state and security exposure.
 
-**FAIL if:** planning relies on stale or unproven assumptions about the system.
+Every fact has provenance, freshness and invalidation semantics.
 
-## Q6 — Can external changes safely invalidate stale assumptions?
-Files, Git state, packages, processes, DNS, services, environment, remote hosts, or configuration can change outside Terminal Command.
+## Q6 — Can external changes invalidate assumptions before they become mistakes?
 
-**PASS requires:** freshness/version checks, target revalidation, plan invalidation, and transactional/locking behavior where required.
+Files, Git, dependencies, processes, DNS, services, environment and remote state can change outside Terminal Command. Require freshness/version checks, target revalidation, plan invalidation and concurrency-safe state updates.
 
 ---
 
-# C — Exact Actions and non-bypassable authority
+# C — Exact Actions, authority, and autonomy
 
-## Q7 — Is every executable operation represented by one immutable canonical Action?
-The Action contains every material execution dimension: origin, typed arguments/command, cwd/environment delta, backend, target identity, filesystem/network/data-egress scope, resource limits, mutation/recovery class, provenance, and expiry where relevant.
+## Q7 — Is every executable operation an immutable canonical Action?
 
-Canonical serialization must produce a deterministic `action_hash`.
+Include every material execution dimension: origin, typed arguments/command, cwd/environment delta, backend, stable target identity where available, filesystem/network/data-egress scope, resources, mutation/recovery class, provenance and expiry.
 
-## Q8 — Is authorization bound to that exact Action and exact real-world target?
-Any changed command, argument, cwd, environment, backend, target, scope, capability, path/DNS resolution, or other material meaning creates a new Action/hash.
+Canonical serialization produces deterministic `action_hash`.
 
-**PASS requires:** an approval ticket binds to one immutable Action and is checked immediately before execution.
+## Q8 — Is authorization bound to the exact Action and current real-world target?
 
-**AUTOMATIC FAIL:** route → approval → route again → execute a different result.
+Any material change invalidates authorization. Revalidate mutable references such as paths/reparse points/symlinks, DNS, redirects and remote identity immediately before use.
 
-## Q9 — Is there exactly one supported path to consequential side effects?
-Models, planners, workflows, capability builders, views, and plugins may request Actions but cannot directly perform consequential filesystem/process/network/package/remote/privileged mutations.
+**AUTOMATIC FAIL:** route → approval → route again → execute a changed result.
 
-**PASS requires:** a non-bypassable execution broker through supported interfaces.
+## Q9 — Is there one non-bypassable path to consequential side effects?
 
-## Q10 — Is privilege narrower than the application?
-Normal operation stays unprivileged. Elevated work uses a short-lived helper for one already-authorized exact Action.
+Models, planners, workflows, capability builders, views and plugins request Actions; a controlled broker performs consequential filesystem/process/network/package/remote/privileged side effects.
 
-**FAIL if:** the whole application routinely runs elevated.
+## Q10 — Does autonomy maximize useful action without permission spam?
 
----
-
-# D — Maximum safe autonomy without permission spam
-
-## Q11 — Are autonomy tiers based on consequence and proof rather than AI confidence?
 Minimum policy:
 
 ```text
@@ -181,55 +304,44 @@ T0 OBSERVE
 read/search/inspect/analyze/test
 → automatic
 
-T1 SAFE + EPHEMERAL/REVERSIBLE
-sandbox work, temporary files, candidate branches, disposable services
+T1 EPHEMERAL / DISPOSABLE
+candidate branches, temporary files, sandboxes, disposable services
 → automatic
 
-T2 VERIFIED LOCAL MUTATION
-known repair/update/config transform with checkpoint + verifier + proven rollback
-→ automatic when deterministic gates pass
+T2 VERIFIED REVERSIBLE LOCAL MUTATION
+known repair/update/config transform + proven checkpoint + verifier + rollback
+→ automatic when deterministic prerequisites pass
 
-T3 REVERSIBLE CONTAINMENT
-quarantine/stop/block an exact verified target with recovery
-→ automatic only under high-confidence deterministic policy
+T3 VERIFIED REVERSIBLE CONTAINMENT
+quarantine/stop/block an exact authorized target with proven recovery
+→ automatic only under strict deterministic policy
 
 T4 CONSEQUENTIAL
 privileged/system-wide/production/remote/security-boundary changes
 → explicit approval
 
-T5 IRREVERSIBLE OR UNKNOWN
+T5 IRREVERSIBLE / UNKNOWN
 unbounded destructive/root-of-trust/identity/uncertain external effects
 → approval or deny
 ```
 
-**FAIL if:** low-risk deterministic work repeatedly asks permission.
-
-## Q12 — Can every automatic Action prove its prerequisites before execution?
-Automatic authority requires deterministic proof of target/scope, containment, recovery class, checkpoint when required, verifier availability, resource budget, and dependency/tool health.
-
-**FAIL if:** autonomy primarily rests on model confidence.
-
-## Q13 — Can a plan, workflow, job, or model silently expand authority?
-Each consequential Action independently satisfies policy. Changed workflow state/new steps cannot inherit blanket authorization.
-
-**FAIL if:** approving a goal implicitly authorizes unknown future mutations.
+AI confidence never increases authority.
 
 ---
 
-# E — Execution, containment, transactions, and recovery
+# D — Execution, containment, transaction, and recovery
 
-## Q14 — Does policy choose the least-risk execution boundary that still satisfies the task?
-Select deterministically among native Windows, WSL, disposable container/sandbox, and explicitly scoped remote execution.
+## Q11 — Does policy choose the least-risk boundary that still completes the task?
 
-Unknown/untrusted code should prefer disposable execution when practical.
+Deterministically select native Windows, WSL, disposable container/sandbox or explicitly scoped remote execution. Unknown/untrusted code prefers disposable execution when practical.
 
-## Q15 — Does one process supervisor own execution lifecycle?
-It owns interactive/noninteractive execution, streaming I/O, cancellation, timeout, process-tree cleanup, output/resource bounds, backend health, execution IDs, and disconnect/recovery behavior.
+## Q12 — Does one process supervisor own execution lifecycle?
 
-**FAIL if:** capabilities reinvent process management.
+It owns interactive/noninteractive execution, streaming I/O, timeout, cancellation, process-tree cleanup, resource/output bounds, backend health, execution IDs and disconnect/recovery behavior.
 
-## Q16 — Is every consequential Action transactionally journaled?
-Lifecycle distinguishes at least:
+## Q13 — Is every consequential action transactionally journaled?
+
+At minimum:
 
 ```text
 PREPARED → AUTHORIZED → STARTED → SIDE_EFFECT_OBSERVED → VERIFYING → COMMITTED
@@ -237,226 +349,229 @@ PREPARED → AUTHORIZED → STARTED → SIDE_EFFECT_OBSERVED → VERIFYING → C
                                               └→ ROLLED_BACK / COMPENSATED
 ```
 
-**PASS requires:** trustworthy crash reconciliation at consequential boundaries.
+Crash recovery must reconcile to an honest state.
 
-## Q17 — Is recovery honest, predeclared, and verified?
-Every mutation is reversible, checkpointable, compensatable, or irreversible. Rollback/compensation is itself verified.
+## Q14 — Is recovery predeclared, honest and independently verified?
 
-**FAIL if:** arbitrary shell mutation is described as generically rollback-safe.
-
----
-
-# F — Truth, evidence, and independent verification
-
-## Q18 — Is task success independent from execution success?
-Legal outcomes include `VERIFIED`, `FAILED`, `PARTIAL`, `UNVERIFIED`, `NOT_REPRODUCED`, `FLAKY`, `ENVIRONMENT_FAILURE`, `ORACLE_FAILURE`, `CANCELLED`, `INDETERMINATE`, and `ROLLED_BACK`.
-
-Exit code/tool output/model assertion alone cannot create `VERIFIED`.
-
-## Q19 — Can the verifier disagree with the planner/model/repair generator?
-Consequential capabilities require structurally independent postconditions where practical.
-
-**FAIL if:** the same model's judgment is the only success oracle.
-
-## Q20 — Is evidence safe, bounded, provenance-rich, and concurrency-safe?
-Before persistence: redact secrets, bound output, digest-address large artifacts, record Action/execution/verifier/checkpoint/provenance IDs, label trust source, and use transactional/concurrency-safe writes.
-
-Known secret persistence rate must be zero in adversarial tests.
-
-## Q21 — Is external data egress deterministic and minimal?
-External models/services receive only request-relevant policy-permitted data. Credentials, keys, unrelated files, and sensitive evidence are excluded deterministically.
-
-**FAIL if:** a model can broaden its own context or egress permissions.
+Every mutation is `reversible`, `checkpointable`, `compensatable` or `irreversible`. Claimed recovery is established before automatic execution and verified after use.
 
 ---
 
-# G — Failure reproduction and causal diagnosis
+# E — Truth, evidence, and verification
 
-## Q22 — Does every detected/reported failure enter reproduce → classify → minimize before repair whenever technically possible?
-Capture commit/worktree, dependencies, environment, configuration, services, inputs, relevant external conditions, commands, and evidence.
+## Q15 — Are execution success and task success separated?
 
-**FAIL if:** the system patches an unverified symptom when reproduction is achievable.
+Legal outcomes include at least:
 
-## Q23 — Can it distinguish deterministic defects from flaky/environmental failures and minimize the failing case?
-Use controlled reruns plus appropriate delta debugging/input reduction/change isolation/Git bisect. Preserve the smallest practical reproducer as evidence.
+`VERIFIED`, `FAILED`, `PARTIAL`, `UNVERIFIED`, `NOT_REPRODUCED`, `FLAKY`, `ENVIRONMENT_FAILURE`, `ORACLE_FAILURE`, `CANCELLED`, `INDETERMINATE`, `ROLLED_BACK`.
 
-## Q24 — Can multiple independent localization methods compete to identify cause rather than symptom?
-Use applicable evidence from stack traces, logs/traces/metrics, coverage, spectrum-based localization, Git history, call/dependency graphs, static/data/taint flow, invariants, profiling, configuration/environment differences, and minimized reproducers.
+No exit code, tool output or model assertion alone creates `VERIFIED`.
+
+## Q16 — Can the verifier disagree with the planner/repair generator/model?
+
+Consequential capabilities require structurally independent postconditions where practical. Model-generated fixes cannot self-certify.
+
+## Q17 — Is evidence safe, bounded, provenance-rich and concurrency-safe?
+
+Redact secrets before persistence, bound inline output, digest-address large artifacts, record action/execution/verifier/checkpoint/provenance identities, label trust source and use transactional/concurrency-safe state.
+
+Known secret persistence rate must be zero under adversarial tests.
+
+## Q18 — Is external data egress deterministic and minimal?
+
+External services/models receive only request-relevant policy-permitted data. Models cannot broaden their own context/egress authority.
+
+---
+
+# F — Failure reproduction and causal diagnosis
+
+## Q19 — Does repair begin with reproduce → classify → minimize whenever possible?
+
+Capture commit/worktree, dependencies, environment, configuration, services, inputs, relevant external conditions, commands and evidence. Do not patch an unverified symptom when reproduction is achievable.
+
+## Q20 — Can it distinguish product defects from flaky/environment/oracle failures and minimize the case?
+
+Use controlled reruns plus applicable delta debugging, input reduction, change isolation and Git bisect. Preserve minimal reproducers as evidence.
+
+## Q21 — Do independent localization methods compete before root cause is declared?
+
+Use applicable stack traces, logs/traces/metrics, coverage, spectrum localization, Git history, call/dependency graphs, static/data/taint flow, invariants, profiling, configuration differences and minimized reproducers.
 
 Maintain competing causal hypotheses until evidence eliminates them.
 
-**FAIL if:** one model guess is treated as root cause.
-
 ---
 
-# H — Detector portfolio: never trust one test family
+# G — Detector portfolio and oracle quality
 
-## Q25 — Does the assurance engine dynamically select complementary detectors with known blind spots?
+## Q22 — Does the assurance engine select complementary detectors instead of trusting one green suite?
+
 Use applicable combinations of:
-- existing/generated regression tests;
+
+- existing and generated regression tests;
 - types/static analysis;
 - data/taint flow;
 - property/state-machine testing;
 - mutation testing;
 - coverage-guided fuzzing;
-- sanitizers/runtime fault detectors;
+- sanitizers/runtime detectors;
 - metamorphic/differential testing;
 - API/contracts/database invariants;
 - browser/visual/accessibility/performance testing;
 - dependency/supply-chain checks;
-- authorized DAST/security testing;
+- authorized DAST/security tests;
 - chaos/fault injection;
 - formal/model checking;
 - runtime telemetry.
 
-**FAIL if:** one green suite is treated as general system health.
+Detector selection must account for each method's blind spots and marginal value.
 
-## Q26 — Can the system challenge its own test oracles?
-Detect weak/missing coverage, stale snapshots, incorrect expectations, tests that encode the bug, flaky assertions, overfitted fixtures, and contradictory contracts. Use mutation/fault injection where value justifies cost.
+## Q23 — Can the system challenge its own oracles?
 
-`ORACLE_FAILURE` must be a real outcome.
+Detect weak coverage, stale snapshots, wrong expectations, tests that encode the bug, flaky assertions, overfit fixtures and contradictory contracts. Use mutation/fault injection when its marginal detection value justifies cost.
+
+`ORACLE_FAILURE` is a real outcome.
+
+## Q24 — Does domain coverage remain broad without duplicating engines?
+
+Frontend, backend/data, native/system, security and distributed/concurrent systems each need appropriate proof methods, but Terminal Command should orchestrate mature specialized engines rather than reimplement them unless a custom mechanism wins the tournament.
 
 ---
 
-# I — Autonomous repair and adversarial proof
+# H — Autonomous repair and adversarial proof
 
-## Q27 — Can the repair engine generate/rank competing fixes without defaulting to code changes?
-Candidate repairs may target code, config, dependency, data, environment, infrastructure, test, contract, or architecture.
+## Q25 — Can the repair engine generate and rank competing fixes across the true repair surface?
 
-Rank by causal fit, minimal change surface, reversibility, compatibility, security, testability, and proof strength.
+A repair may be code, configuration, dependency, data, environment, infrastructure, test, contract or architecture. Search proven upstream fixes/recipes before custom synthesis.
 
-Search proven upstream fixes/recipes before inventing custom changes.
+Rank by causal fit, change size, reversibility, compatibility, security, testability, proof strength and maintenance burden.
 
-## Q28 — Does it reject anti-fixes?
-Reject candidates that merely hide failure by weakening tests/validation/security, swallowing errors, increasing arbitrary timeouts, returning fake success, disabling functionality, or pinning insecure obsolete dependencies without proof.
+## Q26 — Does it automatically reject anti-fixes?
 
-## Q29 — Are repair candidates isolated, attacked, and independently verified before promotion?
-Minimum proof ladder when applicable:
+Reject changes that merely hide failure: weakened tests/validation/security, swallowed errors, arbitrary timeout inflation, fake success, disabled functionality or insecure obsolete dependency pinning without proof.
+
+## Q27 — Are candidates isolated, attacked and independently verified before promotion?
+
+When applicable:
 
 ```text
 reproduce before
 → isolated candidate
 → original reproducer passes
 → regression test/property added
-→ previous good behavior still passes
+→ previous good behavior passes
 → relevant full suite
 → static/type/security checks
 → domain-specific assurance
 → fuzz/mutation/adversarial challenge
 → independent verifier
-→ commit/promote
+→ promote
 ```
 
-If proof fails, rollback automatically and keep the failure evidence.
+Failed proof triggers automatic rollback and retained evidence.
 
 ---
 
-# J — Autonomous attack-testing and system maintenance
+# I — Attack-testing, maintenance, and learning
 
-## Q30 — Can the system automatically expose weaknesses in systems it is explicitly authorized to test while remaining bounded?
-Technology/system discovery selects applicable SAST, DAST, fuzzing, property testing, dependency/supply-chain checks, auth/authz negative tests, network inspection, chaos/fault injection, and other bounded attack-test techniques.
+## Q28 — Can it automatically expose weaknesses in systems explicitly authorized for testing while remaining bounded?
 
-**PASS requires:** exact target scope, containment, resource/rate limits, evidence, no stealth/persistence/credential theft, and the same authority broker as all other Actions.
+Discovery selects applicable SAST, DAST, fuzzing, property tests, dependency/supply-chain checks, auth/authz negatives, network analysis, chaos/fault injection and other bounded attack-test techniques.
 
-## Q31 — Can updates and maintenance be automatic at low consequence and strongly verified?
-Desired pipeline:
+Require exact authorized scope, containment, rate/resource limits, evidence and the normal broker. No stealth, persistence or credential theft.
+
+## Q29 — Can low-consequence maintenance and updates be automatic and strongly verified?
 
 ```text
 discover candidate
 → provenance/authentication
-→ dependency/compatibility analysis
+→ compatibility analysis
 → checkpoint/generation
 → isolated update
-→ build/test/security/assurance suite
+→ build/test/security/assurance
 → VERIFIED?
-   yes → promote atomically
-   no  → rollback automatically + retain evidence
+   yes → atomic promotion
+   no  → automatic rollback + evidence
 ```
 
-Low-risk verified updates should not require routine permission. Privileged/system-wide/root-of-trust/production updates remain consequential.
+Low-risk verified updates should not cause permission spam. Privileged/system-wide/root-of-trust/production updates remain consequential.
 
-The same principle applies to Terminal Command itself: authenticated provenance, prepare, re-verification immediately before install, final-path health test, atomic activation, and rollback.
+## Q30 — Does every verified failure improve future deterministic capability without uncontrolled self-modification?
 
----
+Where valuable, retain versioned:
 
-# K — Daily usefulness, learning, and final proof
-
-## Q32 — Does the finished system maximize useful autonomy without becoming slow, fragile, or bloated?
-It must preserve instant everyday value—shell, natural-language command translation, find/search, files, launch/open, projects/resume, system doctor, Git, process/disk/network inspection, archives, monitoring/jobs, checkpoints, updates—while lazily activating heavy assurance machinery only when required.
-
-Every **verified** solved defect should attempt to leave reusable knowledge where valuable:
 - failure fingerprint;
 - minimal reproducer;
 - root-cause record;
 - regression test/property;
-- static/security rule;
+- static/security detector;
 - repair recipe;
 - environment fingerprint;
 - verification recipe.
 
-Learned procedures remain versioned and must re-prove themselves before becoming automatic.
+Learned procedures must re-prove themselves before gaining automatic authority.
 
-Final release evidence must separately measure:
+---
+
+# J — Intelligence, everyday usefulness, and final proof
+
+## Q31 — Is AI used only where it produces a measurable win over deterministic structure?
+
+Resolution order should favor explicit commands, deterministic rules/plans and known capability composition before model escalation. Tiny models handle ambiguity/argument extraction/context selection; stronger models handle genuinely novel synthesis/research/planning.
+
+All model output remains proposed evidence/action, never authority or proof.
+
+## Q32 — Does the finished system maximize capability while remaining fast, understandable and removable by layer?
+
+Preserve instant everyday value:
+
+shell, natural-language command translation, search/find, files, open/launch, projects/resume, system doctor, Git, process/disk/network inspection, archives, monitoring/jobs, checkpoints and updates.
+
+Heavy assurance engines remain lazy/on-demand.
+
+Final release evidence must report separately—not hide in one composite score:
+
 - terminal/session reliability;
 - deterministic-plan coverage;
-- AI-off useful task success;
-- reproduction/minimization rate;
+- AI-off useful-task success;
+- failure reproduction/minimization;
 - root-cause localization quality;
 - verified repair rate;
-- false-fix/defect-escape rate;
-- attack-test weakness discovery;
-- rollback success;
+- false-fix and defect-escape rates;
+- authorized attack-test discovery rate;
+- rollback/recovery success;
 - unsafe-action prevention;
-- permission-request rate by autonomy tier;
+- approval-request rate by autonomy tier;
 - secret/egress violations;
-- state concurrency/crash recovery;
-- update success/rollback;
+- concurrency/crash recovery;
+- automatic update success/rollback;
 - frontend/backend/security/system coverage;
-- model use/escalation rate;
-- latency/CPU/RAM/startup overhead;
+- model usage/escalation rate;
+- startup/latency/CPU/RAM overhead;
 - real Windows/WSL/container behavior.
 
-Do not collapse these into one flattering composite score.
-
-**PASS only when:** additional architecture cannot obviously increase verified autonomy/capability without disproportionate permanent complexity, and removing a component would measurably reduce capability, safety, proof, recovery, or daily usefulness.
+**PASS only when:** no discovered alternative or reasonable hybrid can obviously increase verified capability/autonomy without disproportionate permanent complexity, and removing any core component measurably harms capability, authority, proof, recovery or daily usefulness.
 
 ---
 
 # Q∞ — What can still get through?
 
-> **What defect, unsafe action, environmental change, attack condition, false repair, stale assumption, or evidence failure could still pass every detector and safeguard we have—and what fundamentally different evidence source would expose it?**
+> **What defect, unsafe action, environmental change, attack condition, false repair, stale assumption, evidence failure, or undiscovered mechanism could still pass every detector and safeguard we have—and what fundamentally different evidence source or design would expose it?**
 
-Every escaped defect or failed repair must trigger this loop:
+Every escaped defect, failed repair or important late discovery triggers:
 
 ```text
-failure escaped
-→ determine why existing layers missed it
-→ repair the failure
-→ add the smallest reusable detector/invariant/recipe that would have caught the class
-→ attack the new detector
-→ retain it only if capability gain exceeds complexity
+escape/discovery
+→ determine why existing search + architecture + detectors missed it
+→ reopen Q−1 if it represents a new mechanism class
+→ fix the immediate problem
+→ add the smallest reusable detector/invariant/recipe that catches the class
+→ attack the new mechanism
+→ rerun the relevant tournament
+→ retain only if capability gain exceeds complexity
 ```
 
 Q∞ is never retired.
 
----
-
-# Final Acceptance Rule
-
-Terminal Command is rejected as **not top-tier** if any of the following are true:
-
-- AI is required for routine known operations that deterministic structure could solve.
-- The program cannot automatically test and challenge known systems within authorized scope.
-- A verified repair can regress neighboring behavior without detection.
-- Low-risk reversible verified actions still require unnecessary babysitting.
-- Rollback is claimed but not independently proven.
-- A single detector/oracle can create a global healthy/fixed claim.
-- Capability builders or models can bypass the broker.
-- Heavy machinery slows ordinary daily use when dormant.
-- A subsystem exists mainly because it is interesting rather than because it wins the tournament.
-- Simplification removes useful capability, evidence, autonomy, or recovery.
-- Complexity exists that cannot show a measurable gain against the strongest simpler alternative.
-
 ## Final architectural law
 
-> **Use the smallest architecture capable of the largest verified autonomy. The system understands known state deterministically, plans known work deterministically, executes only exact authorized Actions, contains side effects, reproduces and attacks failures, repairs through competing candidates, independently verifies outcomes, automatically rolls back failed low-risk changes, continuously turns escaped failures into reusable detection knowledge, and invokes AI only when deterministic knowledge and evidence are insufficient.**
+> **Search wider than familiarity. Keep unconventional hypotheses alive until falsified. Choose the smallest architecture capable of the largest verified autonomy. The system understands known state deterministically, plans known work deterministically, executes only exact authorized Actions, contains side effects, reproduces and attacks failures, repairs through competing candidates, independently proves outcomes, rolls back failed changes, learns only from verified evidence, and invokes AI only where AI demonstrably adds capability.**
