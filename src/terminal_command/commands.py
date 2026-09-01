@@ -24,6 +24,7 @@ class CommandRegistry:
                 SlashCommand("/explain", "Explain how a request would route without executing it"),
                 SlashCommand("/help", "Show commands and input modes"),
                 SlashCommand("/history", "Show recent action evidence"),
+                SlashCommand("/jobs", "Manage opt-in recurring local job definitions"),
                 SlashCommand("/project", "Register, select, or inspect resumable projects"),
                 SlashCommand("/workflow", "List, inspect, or run saved capability workflows"),
             ]

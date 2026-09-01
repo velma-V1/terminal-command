@@ -10,7 +10,8 @@ from ..workflows import Workflow, WorkflowStep
 
 
 def _root(args: dict) -> Path:
-    root = Path(args.get("root") or Path.cwd()).expanduser().resolve()
+    context = args.get("__context__", {})
+    root = Path(args.get("root") or context.get("cwd") or Path.cwd()).expanduser().resolve()
     if not root.exists() or not root.is_dir():
         raise ValueError(f"Project root does not exist: {root}")
     return root
@@ -95,7 +96,12 @@ def _log_tail_action(args: dict) -> Action:
         command = ["powershell", "-NoProfile", "-Command", f"Get-Content -LiteralPath '{escaped_path}' -Tail {lines}"]
     else:
         command = ["tail", "-n", str(lines), str(path)]
-    return Action("logs.tail", command, metadata={"capability_id": "logs.tail", "read_only": True})
+    return Action(
+        "logs.tail",
+        command,
+        cwd=args.get("__context__", {}).get("cwd"),
+        metadata={"capability_id": "logs.tail", "read_only": True},
+    )
 
 
 def register_engineering_pack(registry: CapabilityRegistry) -> CapabilityRegistry:
@@ -133,6 +139,7 @@ def register_engineering_pack(registry: CapabilityRegistry) -> CapabilityRegistr
             builder=lambda args: Action(
                 "process.inspect",
                 ["tasklist"] if os.name == "nt" else ["ps", "-ef"],
+                cwd=args.get("__context__", {}).get("cwd"),
                 metadata={"capability_id": "process.inspect", "read_only": True},
             ),
         ),

@@ -38,6 +38,13 @@ class CapabilityRegistry:
     def __init__(self) -> None:
         self._capabilities: dict[str, Capability] = {}
         self._aliases: dict[str, str] = {}
+        self._context: dict[str, Any] = {}
+
+    def set_context(self, **values: Any) -> None:
+        self._context.update(values)
+
+    def context(self) -> dict[str, Any]:
+        return dict(self._context)
 
     def register(self, capability: Capability) -> None:
         if not capability.id or capability.id in self._capabilities:
@@ -76,7 +83,9 @@ class CapabilityRegistry:
                 raise ValueError(f"Invalid type for {spec.name}: expected {spec.kind}")
             if spec.choices and value not in spec.choices:
                 raise ValueError(f"Invalid value for {spec.name}: {value}")
-        action = capability.builder(values)
+        builder_values = dict(values)
+        builder_values["__context__"] = dict(self._context)
+        action = capability.builder(builder_values)
         action.metadata.setdefault("capability_id", capability.id)
         return action
 
@@ -129,7 +138,12 @@ def default_capabilities() -> CapabilityRegistry:
             id="git.status",
             description="Show repository status",
             aliases=("show repository status", "show git status", "show me git status", "what changed in git"),
-            builder=lambda args: Action("git.status", ["git", "status"], metadata={"capability_id": "git.status", "read_only": True}),
+            builder=lambda args: Action(
+                "git.status",
+                ["git", "status"],
+                cwd=args.get("__context__", {}).get("cwd"),
+                metadata={"capability_id": "git.status", "read_only": True},
+            ),
         )
     )
     registry.register(
@@ -140,6 +154,7 @@ def default_capabilities() -> CapabilityRegistry:
             builder=lambda args: Action(
                 "system.cwd",
                 ["cmd", "/c", "cd"] if os.name == "nt" else ["pwd"],
+                cwd=args.get("__context__", {}).get("cwd"),
                 metadata={"capability_id": "system.cwd", "read_only": True},
             ),
         )
@@ -152,11 +167,14 @@ def default_capabilities() -> CapabilityRegistry:
             builder=lambda args: Action(
                 "files.list",
                 ["cmd", "/c", "dir"] if os.name == "nt" else ["ls", "-la"],
+                cwd=args.get("__context__", {}).get("cwd"),
                 metadata={"capability_id": "files.list", "read_only": True},
             ),
         )
     )
+    from .packs.daily import register_daily_pack
     from .packs.engineering import register_engineering_pack
 
     register_engineering_pack(registry)
+    register_daily_pack(registry)
     return registry
