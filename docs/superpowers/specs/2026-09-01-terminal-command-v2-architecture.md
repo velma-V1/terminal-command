@@ -18,6 +18,13 @@ V2 strengthens the hypothesis: the model is not the foundation. The foundation m
 
 Terminal Command owns **authority and orchestration**. It should reuse mature infrastructure rather than reimplement terminals, schedulers, sandboxes, databases, or transport protocols unnecessarily.
 
+## Non-bypassable authority rule
+All consequential side effects must pass through one execution broker. Routers, models, workflows, capability builders, views, and future plugins may construct or request Actions but may not perform filesystem, process, network, package, remote, or privileged mutations directly.
+
+The normal application should run at ordinary user privilege. Privileged operations should use a narrowly scoped, short-lived elevated helper only after the exact privileged Action has been authorized. Never keep the whole application permanently elevated.
+
+For built-in Python code this is enforced through architecture, tests, and restricted interfaces. If third-party capability packs are ever supported, they must be declarative or isolated out-of-process so untrusted extension code cannot bypass the broker simply by importing operating-system APIs.
+
 ---
 
 # Runtime architecture — most valuable order
@@ -42,13 +49,13 @@ L4  Transaction + recovery
     journal | checkpoint | crash recovery | rollback/compensation
 
 L3  Execution + containment
-    process supervisor | native | WSL | container | remote
+    non-bypassable broker | process supervisor | native | WSL | container | remote
 
 L2  Policy + scope
-    deny | least privilege | trust boundary | approval requirement
+    deny | least privilege | target/egress scope | approval requirement
 
 L1  Immutable Action contract
-    canonical action | action hash | nonce | approval ticket
+    canonical action | stable target identity | action hash | nonce | approval ticket
 
 L0  Terminal/session substrate
     ConPTY/PTY | cwd | env | interactive I/O | signals | process state
@@ -88,31 +95,36 @@ Minimum identity fields:
 - cwd;
 - relevant environment delta;
 - requested resources/time limits;
-- declared mutation scope;
+- declared mutation and network/target scope;
+- stable target identifiers where available;
 - provenance/source;
 - creation time and expiry where approval is required.
 
 Canonical serialization produces an `action_hash`.
 
-Once policy evaluation or approval begins, the action is immutable. Any changed argument, cwd, backend, environment, capability, or scope creates a new hash and invalidates prior authorization.
+Once policy evaluation or approval begins, the action is immutable. Any changed argument, cwd, backend, environment, capability, scope, or stable target identity creates a new hash and invalidates prior authorization.
+
+String equality is not enough for mutable external references. Before execution, the broker must revalidate resources whose meaning can change between approval and use: filesystem symlinks/reparse points, resolved paths, remote host/IP resolution, redirects, and similar references. Where a stable object identity is available, bind to it; otherwise detect change and require a new authorization when material.
 
 ## L2 — Policy, scope, and exact-action authorization
 Policy evaluates the canonical action, not user prose and not mutable model output.
 
 Decision order:
 1. hard deny/catastrophic boundary;
-2. target/scope validity;
+2. target, path, network, and data-egress scope validity;
 3. privilege/trust-boundary selection;
 4. mutation and reversibility classification;
 5. automatic allow vs explicit approval;
 6. approval ticket issuance for the exact `action_hash`.
 
-An approval ticket is single-purpose, bounded in lifetime, and cannot authorize a subsequently re-routed action. Approval is checked immediately before execution.
+An approval ticket is single-purpose, bounded in lifetime, and cannot authorize a subsequently re-routed action. Approval and mutable-target validity are checked immediately before execution.
+
+Network actions classify destinations such as local machine, LAN/private ranges, public Internet, link-local/special ranges, and explicit remote targets. Redirects and resolved destinations cannot silently widen approved scope.
 
 The model may recommend risk. Model-provided risk labels are never authoritative.
 
 ## L3 — Execution supervisor and containment
-Replace the V1 single `subprocess.run` abstraction with a process supervisor.
+Replace the V1 single `subprocess.run` abstraction with a non-bypassable execution broker and process supervisor.
 
 Execution backends:
 - `native` — trusted local Windows operations;
@@ -120,7 +132,8 @@ Execution backends:
 - `container` — unknown/untrusted project code where practical;
 - `remote` — explicit scoped SSH/Tailscale targets.
 
-The supervisor owns:
+The broker/supervisor owns:
+- the only normal path to consequential OS side effects;
 - process lifecycle;
 - streaming I/O;
 - timeout and cancellation;
@@ -129,7 +142,8 @@ The supervisor owns:
 - backend health checks;
 - execution IDs;
 - resource-budget hooks;
-- interactive/noninteractive mode.
+- interactive/noninteractive mode;
+- privileged-helper invocation only for specifically authorized Actions.
 
 Containment is selected by trust and task requirements, not by AI preference alone.
 
@@ -189,6 +203,7 @@ Required protections:
 - inter-process locking or transactional writes;
 - schema migrations;
 - action hash, execution ID, verifier result, checkpoint ID, model/escalation metadata;
+- context/evidence provenance labels such as user, local-system, trusted-project, external-untrusted, and model-generated;
 - optional hash chaining for experiment-grade tamper evidence, not falsely described as immutable storage.
 
 ## L7 — Capability, workflow, project, and job platform
@@ -208,6 +223,8 @@ Capability metadata should support, where relevant:
 - health check;
 - provenance/version.
 
+Capability builders should be side-effect-free: validate/normalize arguments and construct Actions. They do not execute those Actions themselves.
+
 Fields remain optional when not meaningful; do not turn simple read-only capabilities into ceremony.
 
 ### Workflows
@@ -217,7 +234,7 @@ Workflows compose capabilities through the exact same action/policy/verification
 Projects hold resumable context, known commands, evidence references, and project-local workflows without becoming a permanent conversation dump.
 
 ### Jobs/monitoring
-Stored jobs need an explicit runner. Prefer OS schedulers such as Windows Task Scheduler for persistence rather than installing a custom hidden daemon. Every triggered job still creates normal actions and evidence.
+Stored jobs need an explicit runner. Prefer OS schedulers such as Windows Task Scheduler for persistence rather than installing a custom hidden daemon. Every triggered job still creates normal Actions and evidence.
 
 ## L8 — Intelligence and escalation
 Resolution order:
@@ -235,7 +252,9 @@ The tiny model should primarily perform intent classification, argument extracti
 
 Raw model-generated shell remains compatibility-only and approval-gated.
 
-Context must be intentionally bounded: current project/session/evidence relevant to the request, not uncontrolled transcript accumulation.
+Context must be intentionally bounded: current project/session/evidence relevant to the request, not uncontrolled transcript accumulation. Context carries provenance/trust labels so externally retrieved text is never silently treated as operator instruction.
+
+Any external model or service invocation passes through a deterministic data-egress policy. Secrets, credentials, private keys, and unrelated local content are not sent merely because a model requested more context. Local operation remains the default when external intelligence is unnecessary.
 
 ## L9 — Operator experience
 The UI remains one terminal window.
@@ -244,7 +263,7 @@ Required surfaces:
 - ordinary shell behavior;
 - natural language;
 - `/` palette;
-- exact-action approval preview including scope/backend/reversibility;
+- exact-action approval preview including target/scope/backend/reversibility;
 - `/status` showing session/backend/model/project/job/update health;
 - `/explain` showing route -> action -> policy -> containment -> verifier before execution;
 - progress/streaming output;
@@ -270,7 +289,7 @@ V2 update design should support:
 - rollback to previous healthy release;
 - no silent startup modification.
 
-Plugin/capability packs should use the same provenance principle if third-party installation is later allowed.
+Plugin/capability packs should use the same provenance principle if third-party installation is later allowed. Third-party executable extension code must not inherit broker authority simply because it is installed.
 
 ## External primitives
 Prefer integration over reimplementation:
@@ -318,14 +337,15 @@ Measure:
 - end-to-end task completion;
 - verifier-confirmed success;
 - unsafe-action attempt and prevention rate;
-- approval-binding violations;
+- approval-binding and mutable-target revalidation violations;
+- broker-bypass attempts;
 - model-use and escalation rate;
 - latency and resource overhead;
 - output-limit behavior;
 - cancellation/process cleanup;
 - crash recovery and transaction reconciliation;
 - rollback success by declared recovery class;
-- secret-leak persistence rate;
+- secret-leak persistence and external-egress rate;
 - state concurrency correctness;
 - offline degradation;
 - Windows/WSL/container reliability.
@@ -355,10 +375,13 @@ If not, place it in a capability, workflow, adapter, or view.
 
 Do not call the redesigned architecture production-ready until all of these are demonstrated:
 - exact-action approval cannot execute a changed/re-routed action;
+- mutable path/network targets cannot silently change approved meaning before use;
+- models, capability builders, workflows, and plugins cannot bypass the execution broker through supported interfaces;
+- privileged execution is narrow and not provided by permanently elevating the whole application;
 - interactive terminal/process behavior works on the target Windows machine;
 - cancellation cleans child process trees;
 - output is bounded/streamed;
-- secrets are redacted before durable evidence storage;
+- secrets are redacted before durable evidence storage and protected by data-egress policy;
 - concurrent state writers cannot silently overwrite each other;
 - mutations accurately declare recovery class;
 - verifier results are independent from model assertions;
@@ -368,4 +391,4 @@ Do not call the redesigned architecture production-ready until all of these are 
 - end-to-end benchmark reports verified outcomes rather than routing accuracy alone.
 
 ## Final principle
-> The model understands and proposes. The system identifies the exact action, decides authority, chooses the boundary, executes, recovers, verifies, and records what was actually proven.
+> The model understands and proposes. The system identifies the exact action, decides authority, chooses the boundary, executes through a non-bypassable broker, recovers, verifies, and records what was actually proven.
