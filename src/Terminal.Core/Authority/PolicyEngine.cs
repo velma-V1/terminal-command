@@ -17,7 +17,7 @@ public sealed class PolicyEngine
         if (!facts.TargetRevalidated)
         {
             return new PolicyDecision(
-                PolicyDecisionKind.RequireApproval,
+                PolicyDecisionKind.Deny,
                 "target-revalidation-required",
                 RequiresTargetRevalidation: true);
         }
