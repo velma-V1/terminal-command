@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -70,7 +71,10 @@ def test_static_scan_prefers_semgrep_with_explicit_config(monkeypatch, tmp_path)
 def test_network_inspection_is_local_and_approval_gated(monkeypatch):
     monkeypatch.setattr(security.shutil, "which", lambda name: "/usr/bin/ss" if name == "ss" else None)
     action = _registry().invoke("security.network", {})
-    assert action.command == ["/usr/bin/ss", "-lntup"]
+    if os.name == "nt":
+        assert action.command == ["netstat", "-ano"]
+    else:
+        assert action.command == ["/usr/bin/ss", "-lntup"]
     assert action.metadata["security"] is True
     assert PolicyEngine().evaluate(action).decision.value == "require_approval"
 
