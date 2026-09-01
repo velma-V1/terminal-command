@@ -76,9 +76,9 @@ public sealed class TerminalAction
         Arguments = Array.AsReadOnly((arguments ?? throw new ArgumentNullException(nameof(arguments))).ToArray());
         Backend = backend;
         WorkingDirectory = Required(workingDirectory, nameof(workingDirectory));
-        EnvironmentDelta = Copy(environmentDelta ?? throw new ArgumentNullException(nameof(environmentDelta)));
+        EnvironmentDelta = CopyNullableValues(environmentDelta ?? throw new ArgumentNullException(nameof(environmentDelta)));
         TargetIdentity = Required(targetIdentity, nameof(targetIdentity));
-        Scope = Copy(scope ?? throw new ArgumentNullException(nameof(scope)));
+        Scope = CopyRequiredValues(scope ?? throw new ArgumentNullException(nameof(scope)));
         Timeout = timeout;
         MemoryLimitBytes = memoryLimitBytes;
         Mutation = mutation;
@@ -109,9 +109,9 @@ public sealed class TerminalAction
             ? throw new ArgumentException("Value must not be empty.", name)
             : value;
 
-    private static IReadOnlyDictionary<string, string?> Copy(IReadOnlyDictionary<string, string?> source)
+    private static IReadOnlyDictionary<string, string?> CopyNullableValues(IReadOnlyDictionary<string, string?> source)
         => new ReadOnlyDictionary<string, string?>(new Dictionary<string, string?>(source, StringComparer.Ordinal));
 
-    private static IReadOnlyDictionary<string, string> Copy(IReadOnlyDictionary<string, string> source)
+    private static IReadOnlyDictionary<string, string> CopyRequiredValues(IReadOnlyDictionary<string, string> source)
         => new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(source, StringComparer.Ordinal));
 }
