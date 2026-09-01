@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -13,11 +14,41 @@ from terminal_command.update import (
     apply_prepared_release,
     compare_versions,
     create_rollback_state,
+    download_update_artifact,
+    fetch_update_manifest,
     prepare_local_artifact,
     read_current_version,
     switch_current_version,
     verify_sha256,
 )
+
+
+class FakeResponse:
+    def __init__(self, body: bytes, *, url: str):
+        self._body = io.BytesIO(body)
+        self._url = url
+        self.status = 200
+        self.headers = {"Content-Type": "application/json"}
+
+    def read(self, size: int = -1) -> bytes:
+        return self._body.read(size)
+
+    def geturl(self) -> str:
+        return self._url
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class FakeOpener:
+    def __init__(self, response: FakeResponse):
+        self.response = response
+
+    def open(self, request, timeout=None):
+        return self.response
 
 
 def test_update_manifest_requires_https_semver_and_sha256():
@@ -39,6 +70,19 @@ def test_update_manifest_requires_https_semver_and_sha256():
     for payload in invalid:
         with pytest.raises(ValueError):
             UpdateManifest.from_dict(payload)
+
+
+def test_fetch_update_manifest_is_bounded_https_and_schema_validated():
+    body = json.dumps(
+        {
+            "version": "0.2.0",
+            "artifact_url": "https://example.com/terminal-command-0.2.0.whl",
+            "sha256": "a" * 64,
+        }
+    ).encode("utf-8")
+    opener = FakeOpener(FakeResponse(body, url="https://example.com/update-manifest.json"))
+    manifest = fetch_update_manifest("https://example.com/update-manifest.json", opener=opener)
+    assert manifest.version == "0.2.0"
 
 
 def test_version_comparison_handles_release_and_prerelease():
@@ -70,6 +114,31 @@ def test_prepare_local_artifact_verifies_and_stages_without_switching_current(tm
     assert staged.exists()
     assert staged.read_bytes() == b"wheel"
     assert read_current_version(install_root) == "0.1.0"
+
+
+def test_download_update_artifact_hash_verifies_before_staging(tmp_path):
+    install_root = tmp_path / "install"
+    (install_root / "releases" / "0.1.0").mkdir(parents=True)
+    switch_current_version(install_root, "0.1.0")
+    body = b"downloaded-wheel"
+    manifest = UpdateManifest(
+        "0.2.0",
+        "https://example.com/terminal-command-0.2.0.whl",
+        hashlib.sha256(body).hexdigest(),
+    )
+    opener = FakeOpener(FakeResponse(body, url=manifest.artifact_url))
+
+    staged = download_update_artifact(manifest, install_root, current_version="0.1.0", opener=opener)
+
+    assert staged.read_bytes() == body
+    assert read_current_version(install_root) == "0.1.0"
+
+
+def test_download_rejects_hash_mismatch_and_does_not_stage(tmp_path):
+    manifest = UpdateManifest("0.2.0", "https://example.com/a.whl", "0" * 64)
+    opener = FakeOpener(FakeResponse(b"not-the-wheel", url=manifest.artifact_url))
+    with pytest.raises(ValueError, match="sha256"):
+        download_update_artifact(manifest, tmp_path / "install", current_version="0.1.0", opener=opener)
 
 
 def test_prepare_rejects_same_or_older_version(tmp_path):
