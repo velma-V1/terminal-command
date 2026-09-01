@@ -31,6 +31,9 @@ def test_cd_updates_session_working_directory_without_spawning_command(tmp_path)
     assert outcome.status == "success"
     assert executor.actions[-1].cwd == str(target.resolve())
 
+    capability_action = app.capabilities.invoke("git.diff", {})
+    assert capability_action.cwd == str(target.resolve())
+
 
 def test_cd_rejects_missing_directory_and_preserves_current_cwd(tmp_path):
     executor = FakeExecutor()
