@@ -217,6 +217,21 @@ def download_update_artifact(
         temp.unlink(missing_ok=True)
 
 
+def _verify_staged_manifest(source: Path, target_version: str) -> None:
+    manifest_path = source.parent / "manifest.json"
+    if not manifest_path.is_file():
+        return
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("Prepared update manifest is invalid") from exc
+    manifest = UpdateManifest.from_dict(payload)
+    if manifest.version != target_version:
+        raise ValueError("Prepared update manifest version does not match target release")
+    if not verify_sha256(source, manifest.sha256):
+        raise ValueError("Prepared update artifact sha256 mismatch")
+
+
 def _default_venv_builder(path: Path) -> None:
     venv.EnvBuilder(with_pip=True, clear=False).create(path)
 
@@ -241,6 +256,7 @@ def apply_prepared_release(
     source = Path(artifact).expanduser().resolve()
     if not source.is_file():
         raise ValueError(f"Prepared artifact does not exist: {source}")
+    _verify_staged_manifest(source, target_version)
     current_version = read_current_version(root)
     if current_version is None:
         raise ValueError("No current installed release exists")
