@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/Terminal.*/**'
       - 'tests/Terminal.*/**'
+      - 'tools/v3-wsl-smoke.ps1'
       - 'Terminal.slnx'
       - 'Directory.Build.props'
       - 'global.json'
@@ -14,6 +15,7 @@ on:
     paths:
       - 'src/Terminal.*/**'
       - 'tests/Terminal.*/**'
+      - 'tools/v3-wsl-smoke.ps1'
       - 'Terminal.slnx'
       - 'Directory.Build.props'
       - 'global.json'
@@ -29,6 +31,7 @@ env:
 
 jobs:
   test:
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -46,6 +49,6 @@ jobs:
       - name: Restore
         run: dotnet restore Terminal.slnx
       - name: Build
-        run: dotnet build Terminal.slnx --configuration Release --no-restore
-      - name: Test
-        run: dotnet test Terminal.slnx --configuration Release --no-build
+        run: dotnet build Terminal.slnx --configuration Release --no-restore -p:ContinuousIntegrationBuild=true
+      - name: Test authority, protocol, lifecycle, and fault matrix
+        run: dotnet test Terminal.slnx --configuration Release --no-build --logger "console;verbosity=normal"

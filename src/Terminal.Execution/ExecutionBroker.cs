@@ -12,6 +12,45 @@ public enum ProcessExecutionStatus
     FailedToStart
 }
 
+public enum ProcessContainmentBoundary
+{
+    None,
+    WindowsJobObject,
+    LinuxCgroupV2,
+    LinuxProcessGroup
+}
+
+public sealed class ProcessOutput
+{
+    private readonly byte[] _captured;
+
+    public ProcessOutput(ReadOnlySpan<byte> captured, long totalBytes)
+    {
+        if (totalBytes < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(totalBytes));
+        }
+
+        if (totalBytes < captured.Length)
+        {
+            throw new ArgumentException("Total bytes cannot be smaller than captured bytes.", nameof(totalBytes));
+        }
+
+        _captured = captured.ToArray();
+        TotalBytes = totalBytes;
+    }
+
+    public ReadOnlyMemory<byte> Captured => _captured;
+    public long TotalBytes { get; }
+    public bool Truncated => TotalBytes > _captured.Length;
+}
+
+public sealed record ProcessExecutionMetrics(
+    ProcessContainmentBoundary Containment,
+    long? PeakMemoryBytes = null,
+    TimeSpan? UserCpuTime = null,
+    TimeSpan? KernelCpuTime = null);
+
 public sealed record ProcessExecutionRequest(
     Guid ExecutionId,
     Guid TransactionId,
@@ -22,7 +61,11 @@ public sealed record ProcessExecutionResult
     public ProcessExecutionResult(
         Guid executionId,
         ProcessExecutionStatus status,
-        int? exitCode)
+        int? exitCode,
+        ProcessOutput? stdout = null,
+        ProcessOutput? stderr = null,
+        ProcessExecutionMetrics? metrics = null,
+        string? errorMessage = null)
     {
         if (executionId == Guid.Empty)
         {
@@ -32,11 +75,19 @@ public sealed record ProcessExecutionResult
         ExecutionId = executionId;
         Status = status;
         ExitCode = exitCode;
+        Stdout = stdout;
+        Stderr = stderr;
+        Metrics = metrics;
+        ErrorMessage = errorMessage;
     }
 
     public Guid ExecutionId { get; }
     public ProcessExecutionStatus Status { get; }
     public int? ExitCode { get; }
+    public ProcessOutput? Stdout { get; }
+    public ProcessOutput? Stderr { get; }
+    public ProcessExecutionMetrics? Metrics { get; }
+    public string? ErrorMessage { get; }
 }
 
 public interface IProcessSupervisor
