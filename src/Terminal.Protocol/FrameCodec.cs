@@ -12,6 +12,11 @@ public static class FrameCodec
     {
         ValidatePayloadLength(header.PayloadLength, payload.Length);
 
+        if (!Enum.IsDefined(header.MessageType))
+        {
+            throw new InvalidDataException("Unknown protocol message type.");
+        }
+
         var buffer = new byte[HeaderBytes + payload.Length];
         var span = buffer.AsSpan();
 
@@ -54,6 +59,17 @@ public static class FrameCodec
         }
 
         var messageType = (ProtocolMessageType)BinaryPrimitives.ReadUInt16LittleEndian(frame[8..10]);
+        if (!Enum.IsDefined(messageType))
+        {
+            throw new InvalidDataException("Unknown protocol message type.");
+        }
+
+        var reservedFlags = BinaryPrimitives.ReadUInt16LittleEndian(frame[10..12]);
+        if (reservedFlags != 0)
+        {
+            throw new InvalidDataException("Reserved protocol flags must be zero.");
+        }
+
         var requestId = new Guid(frame[12..28]);
         var payloadLength = BinaryPrimitives.ReadInt32LittleEndian(frame[28..32]);
 
@@ -67,9 +83,8 @@ public static class FrameCodec
             throw new InvalidDataException("Frame length does not match its declared payload length.");
         }
 
-        var payload = frame[HeaderBytes..].ToArray();
         var header = new FrameHeader(version, messageType, requestId, payloadLength);
-        return new ProtocolFrame(header, payload);
+        return new ProtocolFrame(header, frame[HeaderBytes..]);
     }
 
     private static void ValidatePayloadLength(int declaredLength, int actualLength)
