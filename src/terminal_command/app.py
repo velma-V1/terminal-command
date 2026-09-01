@@ -1,20 +1,25 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shlex
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
+from typing import Callable
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
 from rich.console import Console
 from rich.panel import Panel
 
+from .benchmark import default_cases, run_router_benchmark
 from .capabilities import CapabilityRegistry, default_capabilities
 from .checkpoints import CheckpointManager
 from .commands import CommandRegistry
-from .contracts import ExecutionResult, PolicyDecision, RouteResult
+from .config import ConfigStore
+from .contracts import Action, ExecutionResult, InputKind, PolicyDecision, RouteResult
 from .doctor import DoctorReport, run_doctor
 from .execution import Executor
 from .history import HistoryStore
@@ -23,6 +28,14 @@ from .model_router import OllamaRouter
 from .policy import PolicyEngine, PolicyResult
 from .projects import ProjectStore
 from .routing import Router
+from .update import (
+    UpdateManifest,
+    apply_prepared_release,
+    download_update_artifact,
+    fetch_update_manifest,
+    read_current_version,
+    switch_current_version,
+)
 from .workflows import WorkflowRunner, WorkflowStore
 
 
@@ -50,6 +63,7 @@ class AppCore:
         workflows: WorkflowStore | None = None,
         checkpoints: CheckpointManager | None = None,
         jobs: JobStore | None = None,
+        config_store: ConfigStore | None = None,
         state_dir: str | Path | None = None,
         cwd: str | Path | None = None,
     ):
@@ -66,6 +80,8 @@ class AppCore:
         self.workflows = workflows or WorkflowStore(base_state / "workflows.json")
         self.checkpoints = checkpoints or CheckpointManager(base_state)
         self.jobs = jobs or JobStore(base_state / "jobs.json")
+        self.config_store = config_store or ConfigStore(base_state / "config.json")
+        self.config = self.config_store.load()
         self.commands = commands or CommandRegistry.default()
 
     def handle(self, text: str, *, approved: bool = False) -> AppOutcome:
@@ -166,6 +182,10 @@ class AppCore:
                 f"policy={policy.decision.value} risk={policy.risk.value} command={preview}"
             )
             return AppOutcome("info", message, route=route)
+        if command.name == "/benchmark":
+            return self._handle_benchmark(route)
+        if command.name == "/update":
+            return self._handle_update(text, route, approved=approved)
         if command.name == "/project":
             return self._handle_project(text, route)
         if command.name == "/workflow":
@@ -175,6 +195,139 @@ class AppCore:
         if command.name == "/jobs":
             return self._handle_jobs(text, route)
         return AppOutcome("unknown_command", f"Unhandled command: {command.name}", route=route)
+
+    def _handle_benchmark(self, route: RouteResult) -> AppOutcome:
+        cases = default_cases()
+        deterministic_router = Router(capabilities=self.capabilities)
+        deterministic = run_router_benchmark(deterministic_router, cases, mode="deterministic")
+        lines = [
+            f"deterministic accuracy={deterministic.accuracy:.3f} ({deterministic.correct}/{deterministic.total})"
+        ]
+        if getattr(self.router, "model_router", None) is not None:
+            assisted = run_router_benchmark(self.router, cases, mode="model-assisted")
+            lines.append(f"model-assisted accuracy={assisted.accuracy:.3f} ({assisted.correct}/{assisted.total})")
+        lines.append("Routing benchmark only; no proposed action was executed.")
+        return AppOutcome("info", "\n".join(lines), route=route)
+
+    def _handle_update(self, text: str, route: RouteResult, *, approved: bool) -> AppOutcome:
+        try:
+            parts = shlex.split(text)
+        except ValueError as exc:
+            return AppOutcome("error", str(exc), route=route)
+        install_root = default_install_root()
+        current = read_current_version(install_root) or installed_version()
+        manifest_url = self.config.update_manifest_url
+        if len(parts) == 1 or parts[1].lower() == "status":
+            if manifest_url is None:
+                return AppOutcome(
+                    "info",
+                    f"current={current} install_root={install_root}\nUpdate manifest is not configured. Set update_manifest_url in {self.config_store.path}.",
+                    route=route,
+                )
+            return AppOutcome(
+                "info",
+                f"current={current} install_root={install_root}\nmanifest={manifest_url}\nNo network request was made.",
+                route=route,
+            )
+        action_name = parts[1].lower()
+        if action_name in {"check", "prepare"} and manifest_url is None:
+            return AppOutcome("error", f"Update manifest is not configured in {self.config_store.path}.", route=route)
+        if action_name == "check":
+            action = Action(
+                "update.check",
+                ["update", "check"],
+                metadata={"capability_id": "update.check", "remote": True, "read_only": True, "requires_approval": True},
+            )
+
+            def operation() -> str:
+                manifest = fetch_update_manifest(manifest_url or "")
+                relation = "available" if manifest.version != current and _is_newer(manifest.version, current) else "current"
+                return f"current={current} latest={manifest.version} status={relation}"
+
+            return self._run_internal_action(text, route, action, approved, operation)
+        if action_name == "prepare":
+            action = Action(
+                "update.prepare",
+                ["update", "prepare"],
+                metadata={"capability_id": "update.prepare", "remote": True, "requires_approval": True},
+            )
+
+            def operation() -> str:
+                manifest = fetch_update_manifest(manifest_url or "")
+                staged = download_update_artifact(manifest, install_root, current_version=current)
+                return f"Prepared {manifest.version}: {staged}"
+
+            return self._run_internal_action(text, route, action, approved, operation)
+        if action_name == "apply" and len(parts) == 3:
+            target = parts[2]
+            action = Action(
+                "update.apply",
+                ["update", "apply", target],
+                metadata={"capability_id": "update.apply", "requires_approval": True},
+            )
+
+            def operation() -> str:
+                artifact = _prepared_artifact(install_root, target)
+                applied = apply_prepared_release(install_root, target, artifact)
+                return f"Activated release {applied}. Restart Terminal Command to use it."
+
+            return self._run_internal_action(text, route, action, approved, operation)
+        if action_name == "rollback":
+            action = Action(
+                "update.rollback",
+                ["update", "rollback"],
+                metadata={"capability_id": "update.rollback", "requires_approval": True},
+            )
+
+            def operation() -> str:
+                state_path = install_root / "rollback.json"
+                if not state_path.is_file():
+                    raise ValueError("No rollback state is available")
+                payload = json.loads(state_path.read_text(encoding="utf-8"))
+                previous = payload.get("previous_version")
+                if not isinstance(previous, str) or not previous:
+                    raise ValueError("Rollback state is invalid")
+                switch_current_version(install_root, previous)
+                return f"Rolled current release back to {previous}. Restart Terminal Command to use it."
+
+            return self._run_internal_action(text, route, action, approved, operation)
+        return AppOutcome(
+            "info",
+            "Usage: /update [status | check | prepare | apply <version> | rollback]",
+            route=route,
+        )
+
+    def _run_internal_action(
+        self,
+        text: str,
+        parent_route: RouteResult,
+        action: Action,
+        approved: bool,
+        operation: Callable[[], str],
+    ) -> AppOutcome:
+        route = RouteResult(
+            input_kind=InputKind.SLASH,
+            source="slash",
+            action=action,
+            confidence=1.0,
+            rule_id=f"slash.{action.name}",
+        )
+        policy = self.policy.evaluate(action)
+        if policy.decision is PolicyDecision.DENY:
+            self.history.record(text, route, policy, error="denied")
+            return AppOutcome("denied", policy.reason, parent_route, policy)
+        if policy.decision is PolicyDecision.REQUIRE_APPROVAL and not approved:
+            self.history.record(text, route, policy, error="approval_required")
+            return AppOutcome("approval_required", policy.reason, route, policy)
+        try:
+            message = operation()
+            execution = ExecutionResult("internal", 0, message, "", 0.0, "success")
+            self.history.record(text, route, policy, execution)
+            return AppOutcome("success", message, route, policy, execution)
+        except (ValueError, OSError, RuntimeError, json.JSONDecodeError) as exc:
+            execution = ExecutionResult("internal", 1, "", str(exc), 0.0, "failed")
+            self.history.record(text, route, policy, execution, error=str(exc))
+            return AppOutcome("failed", str(exc), route, policy, execution)
 
     def _set_session_project(self, root: str | Path) -> None:
         self.cwd = Path(root).expanduser().resolve()
@@ -316,6 +469,46 @@ def default_history_path() -> Path:
     return Path.home() / ".terminal-command" / "history.db"
 
 
+def default_install_root() -> Path:
+    configured = os.environ.get("TERMINAL_COMMAND_INSTALL_ROOT")
+    if configured:
+        return Path(configured).expanduser().resolve()
+    if os.name == "nt" and os.environ.get("LOCALAPPDATA"):
+        return (Path(os.environ["LOCALAPPDATA"]) / "TerminalCommand").resolve()
+    return (Path.home() / ".local" / "share" / "terminal-command").resolve()
+
+
+def installed_version() -> str:
+    try:
+        return package_version("terminal-command")
+    except PackageNotFoundError:
+        return "0.1.0"
+
+
+def _is_newer(candidate: str, current: str) -> bool:
+    from .update import compare_versions
+
+    return compare_versions(candidate, current) > 0
+
+
+def _prepared_artifact(install_root: Path, target: str) -> Path:
+    manifest_path = install_root / "staging" / target / "manifest.json"
+    if not manifest_path.is_file():
+        raise ValueError(f"Prepared manifest does not exist for release {target}")
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = UpdateManifest.from_dict(payload)
+    if manifest.version != target:
+        raise ValueError("Prepared manifest version does not match requested target")
+    candidates = [
+        path
+        for path in manifest_path.parent.iterdir()
+        if path.is_file() and path.name != "manifest.json" and not path.name.endswith(".tmp")
+    ]
+    if len(candidates) != 1:
+        raise ValueError(f"Expected one prepared artifact for release {target}")
+    return candidates[0]
+
+
 def format_doctor(report: DoctorReport) -> str:
     lines = [f"core: {'ok' if report.core_healthy else 'failed'}"]
     for check in report.checks:
@@ -348,7 +541,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="terminal-command")
     parser.add_argument("--doctor", action="store_true", help="Run health checks and exit")
     parser.add_argument("--no-model", action="store_true", help="Disable Ollama intent routing")
-    parser.add_argument("--model", default=os.environ.get("TERMINAL_COMMAND_MODEL", "qwen3.5:2b"))
+    parser.add_argument("--model", default=os.environ.get("TERMINAL_COMMAND_MODEL"))
     parser.add_argument("--history-db", default=None)
     return parser
 
@@ -361,12 +554,16 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     history = HistoryStore(Path(args.history_db).expanduser()) if args.history_db else HistoryStore(default_history_path())
+    config_store = ConfigStore(history.path.parent / "config.json")
+    config = config_store.load()
     capabilities = default_capabilities()
-    model_router = None if args.no_model else OllamaRouter(model=args.model, registry=capabilities)
+    model_name = args.model or config.model
+    model_router = None if args.no_model or not config.model_enabled else OllamaRouter(model=model_name, registry=capabilities)
     app = AppCore(
         router=Router(model_router=model_router, capabilities=capabilities),
         history=history,
         capabilities=capabilities,
+        config_store=config_store,
     )
 
     console.print(Panel.fit("TERMINAL COMMAND\nNatural language • shell • /commands", border_style="cyan"))

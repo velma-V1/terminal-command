@@ -17,6 +17,7 @@ class CommandRegistry:
     def default(cls) -> "CommandRegistry":
         return cls(
             [
+                SlashCommand("/benchmark", "Score deterministic/model-assisted intent routing without executing actions"),
                 SlashCommand("/capabilities", "List registered capability IDs"),
                 SlashCommand("/checkpoint", "List or create proven recovery checkpoints"),
                 SlashCommand("/doctor", "Check local runtime and optional tools"),
@@ -26,6 +27,7 @@ class CommandRegistry:
                 SlashCommand("/history", "Show recent action evidence"),
                 SlashCommand("/jobs", "Manage opt-in recurring local job definitions"),
                 SlashCommand("/project", "Register, select, or inspect resumable projects"),
+                SlashCommand("/update", "Show update state or explicitly check, prepare, apply, or roll back a release"),
                 SlashCommand("/workflow", "List, inspect, or run saved capability workflows"),
             ]
         )

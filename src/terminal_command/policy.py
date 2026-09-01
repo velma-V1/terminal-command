@@ -16,12 +16,14 @@ class PolicyEngine:
     def evaluate(self, action: Action) -> PolicyResult:
         text = self._normalized(action)
 
+        if self._catastrophic(text):
+            return PolicyResult(PolicyDecision.DENY, RiskLevel.CATASTROPHIC, "Catastrophic system-wide destructive pattern")
         if action.metadata.get("security") is True:
             return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.PRIVILEGED, "Security action requires explicit approval")
         if action.metadata.get("remote") is True:
             return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.PRIVILEGED, "Remote action requires explicit approval")
-        if self._catastrophic(text):
-            return PolicyResult(PolicyDecision.DENY, RiskLevel.CATASTROPHIC, "Catastrophic system-wide destructive pattern")
+        if action.metadata.get("requires_approval") is True:
+            return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.MUTATING, "Capability explicitly requires approval")
         if self._privileged(text):
             return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.PRIVILEGED, "Privileged/elevated command")
         if self._destructive(text):
