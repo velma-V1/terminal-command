@@ -30,3 +30,48 @@ jobs:
         run: python -m pytest -q
       - name: Run doctor smoke check
         run: terminal-command --doctor
+      - name: Run deterministic routing benchmark
+        run: python -m terminal_command.benchmark benchmarks/router_tasks.json
+
+  package-smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build wheel and source distribution
+        run: python -m pip install --upgrade pip build && python -m build
+      - name: Create clean smoke environment
+        run: python -m venv .smoke
+      - name: Install wheel and run doctor (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          .smoke/bin/python -m pip install dist/*.whl
+          .smoke/bin/terminal-command --doctor
+      - name: Install wheel and run doctor (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $wheel = (Get-ChildItem dist\*.whl | Select-Object -First 1).FullName
+          .\.smoke\Scripts\python.exe -m pip install $wheel
+          .\.smoke\Scripts\terminal-command.exe --doctor
+      - name: Validate PowerShell installer syntax (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          [scriptblock]::Create((Get-Content -Raw .\install.ps1)) | Out-Null
+          [scriptblock]::Create((Get-Content -Raw .\uninstall.ps1)) | Out-Null
+      - name: Installer and uninstaller smoke (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:RUNNER_TEMP 'TerminalCommandTest'
+          .\install.ps1 -InstallRoot $root -NoShortcut
+          & (Join-Path $root 'launch.cmd') --doctor
+          .\uninstall.ps1 -InstallRoot $root -NoShortcut
+          if (Test-Path $root) { throw 'Uninstaller left install root behind.' }
