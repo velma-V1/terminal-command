@@ -45,9 +45,9 @@
 
 **Consumes:** `Action`, `RouteResult`, `InputKind`.
 
-**Produces:** `Router.route(text: str) -> RouteResult` with routing precedence slash -> obvious shell -> deterministic natural language -> optional model -> unresolved.
+**Produces:** `Router.route(text: str) -> RouteResult` with routing precedence slash -> known high-confidence natural language -> installed/obvious shell command -> optional model -> unresolved.
 
-- [ ] Add failing tests for `/doctor`, obvious shell commands (`git status`, `python --version`, `ls`/`dir`), deterministic phrases (`show git status`, `show current directory`, `list files`), and unresolved language.
+- [ ] Add failing tests for `/doctor`, normal/installed shell commands, deterministic phrases (`show git status`, `show current directory`, `list files`), shell-vs-natural-language ambiguity, and unresolved language.
 - [ ] Verify failures are due to missing router.
 - [ ] Implement minimal deterministic rules with named rule IDs for telemetry.
 - [ ] Verify tests and full CI.
