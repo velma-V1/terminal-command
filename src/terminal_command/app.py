@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from .capabilities import CapabilityRegistry, default_capabilities
+from .checkpoints import CheckpointManager
 from .commands import CommandRegistry
 from .contracts import ExecutionResult, PolicyDecision, RouteResult
 from .doctor import DoctorReport, run_doctor
@@ -18,7 +20,9 @@ from .execution import Executor
 from .history import HistoryStore
 from .model_router import OllamaRouter
 from .policy import PolicyEngine, PolicyResult
+from .projects import ProjectStore
 from .routing import Router
+from .workflows import WorkflowRunner, WorkflowStore
 
 
 @dataclass(slots=True)
@@ -41,18 +45,27 @@ class AppCore:
         history: HistoryStore | None = None,
         commands: CommandRegistry | None = None,
         capabilities: CapabilityRegistry | None = None,
+        projects: ProjectStore | None = None,
+        workflows: WorkflowStore | None = None,
+        checkpoints: CheckpointManager | None = None,
+        state_dir: str | Path | None = None,
     ):
         self.capabilities = capabilities or getattr(router, "capabilities", None) or default_capabilities()
         self.router = router or Router(capabilities=self.capabilities)
         self.policy = policy or PolicyEngine()
         self.executor = executor or Executor()
         self.history = history or HistoryStore(default_history_path())
+        base_state = Path(state_dir).expanduser() if state_dir is not None else self.history.path.parent
+        base_state.mkdir(parents=True, exist_ok=True)
+        self.projects = projects or ProjectStore(base_state / "projects.json")
+        self.workflows = workflows or WorkflowStore(base_state / "workflows.json")
+        self.checkpoints = checkpoints or CheckpointManager(base_state)
         self.commands = commands or CommandRegistry.default()
 
     def handle(self, text: str, *, approved: bool = False) -> AppOutcome:
         route = self.router.route(text)
         if route.source == "slash":
-            return self._handle_slash(text, route)
+            return self._handle_slash(text, route, approved=approved)
         if route.action is None:
             return AppOutcome(
                 status="unresolved",
@@ -72,7 +85,7 @@ class AppCore:
         self.history.record(text, route, policy, execution)
         return AppOutcome(execution.status, execution.stdout or execution.stderr, route, policy, execution)
 
-    def _handle_slash(self, text: str, route: RouteResult) -> AppOutcome:
+    def _handle_slash(self, text: str, route: RouteResult, *, approved: bool) -> AppOutcome:
         command = self.commands.resolve(text)
         if command is None:
             return AppOutcome("unknown_command", f"Unknown command: {text}", route=route)
@@ -115,7 +128,104 @@ class AppCore:
                 f"policy={policy.decision.value} risk={policy.risk.value} command={preview}"
             )
             return AppOutcome("info", message, route=route)
+        if command.name == "/project":
+            return self._handle_project(text, route)
+        if command.name == "/workflow":
+            return self._handle_workflow(text, route, approved=approved)
+        if command.name == "/checkpoint":
+            return self._handle_checkpoint(text, route)
         return AppOutcome("unknown_command", f"Unhandled command: {command.name}", route=route)
+
+    def _handle_project(self, text: str, route: RouteResult) -> AppOutcome:
+        try:
+            parts = shlex.split(text)
+        except ValueError as exc:
+            return AppOutcome("error", str(exc), route=route)
+        if len(parts) == 1:
+            current = self.projects.current()
+            rows = self.projects.list()
+            if not rows:
+                return AppOutcome("info", "No projects registered.", route=route)
+            lines = [f"{'*' if current and item.name == current.name else ' '} {item.name} -> {item.root}" for item in rows]
+            return AppOutcome("info", "\n".join(lines), route=route)
+        action = parts[1].lower()
+        try:
+            if action == "register" and len(parts) >= 3:
+                project = self.projects.register(parts[2], name=parts[3] if len(parts) >= 4 else None)
+                self.projects.set_current(project.name)
+                return AppOutcome("info", f"Current project: {project.name} -> {project.root}", route=route)
+            if action == "use" and len(parts) == 3:
+                project = self.projects.set_current(parts[2])
+                return AppOutcome("info", f"Current project: {project.name} -> {project.root}", route=route)
+            if action == "note" and len(parts) >= 3:
+                current = self.projects.current()
+                if current is None:
+                    return AppOutcome("error", "No current project.", route=route)
+                project = self.projects.add_note(current.name, " ".join(parts[2:]))
+                return AppOutcome("info", f"Saved note to {project.name}.", route=route)
+        except ValueError as exc:
+            return AppOutcome("error", str(exc), route=route)
+        return AppOutcome("info", "Usage: /project [register <path> [name] | use <name> | note <text>]", route=route)
+
+    def _handle_workflow(self, text: str, route: RouteResult, *, approved: bool) -> AppOutcome:
+        try:
+            parts = shlex.split(text)
+        except ValueError as exc:
+            return AppOutcome("error", str(exc), route=route)
+        if len(parts) == 1:
+            rows = self.workflows.list()
+            if not rows:
+                return AppOutcome("info", "No saved workflows.", route=route)
+            return AppOutcome("info", "\n".join(f"{item.name:<24} {item.description}" for item in rows), route=route)
+        action = parts[1].lower()
+        if action == "show" and len(parts) == 3:
+            workflow = self.workflows.get(parts[2])
+            if workflow is None:
+                return AppOutcome("error", f"Unknown workflow: {parts[2]}", route=route)
+            lines = [f"{workflow.name}: {workflow.description}"]
+            lines.extend(f"- {step.capability_id} {step.arguments}" for step in workflow.steps)
+            return AppOutcome("info", "\n".join(lines), route=route)
+        if action == "run" and len(parts) == 3:
+            workflow = self.workflows.get(parts[2])
+            if workflow is None:
+                return AppOutcome("error", f"Unknown workflow: {parts[2]}", route=route)
+            result = WorkflowRunner(self.capabilities, self.policy, self.executor).run(workflow, approved=approved)
+            if result.status == "approval_required":
+                return AppOutcome("approval_required", f"Workflow {workflow.name} requires approval.", route=route)
+            message = "\n".join(f"{step.capability_id}: {step.status} {step.message}".rstrip() for step in result.steps)
+            return AppOutcome(result.status, message, route=route)
+        return AppOutcome("info", "Usage: /workflow [show <name> | run <name>]", route=route)
+
+    def _handle_checkpoint(self, text: str, route: RouteResult) -> AppOutcome:
+        try:
+            parts = shlex.split(text)
+        except ValueError as exc:
+            return AppOutcome("error", str(exc), route=route)
+        if len(parts) == 1:
+            rows = self.checkpoints.list()
+            if not rows:
+                return AppOutcome("info", "No checkpoints.", route=route)
+            return AppOutcome(
+                "info",
+                "\n".join(f"{item.id} {item.kind} {item.label}".rstrip() for item in rows[:20]),
+                route=route,
+            )
+        action = parts[1].lower()
+        try:
+            if action == "files" and len(parts) >= 3:
+                checkpoint = self.checkpoints.create_files([Path(item) for item in parts[2:]], label="manual")
+                return AppOutcome("info", f"Created file checkpoint {checkpoint.id}.", route=route)
+            if action == "git":
+                if len(parts) >= 3:
+                    root = Path(parts[2])
+                else:
+                    current = self.projects.current()
+                    root = Path(current.root) if current is not None else Path.cwd()
+                checkpoint = self.checkpoints.create_git(root, label="manual")
+                return AppOutcome("info", f"Created Git checkpoint {checkpoint.id} at {checkpoint.git_head}.", route=route)
+        except (ValueError, OSError) as exc:
+            return AppOutcome("error", str(exc), route=route)
+        return AppOutcome("info", "Usage: /checkpoint [files <path...> | git [repo]]", route=route)
 
 
 def default_history_path() -> Path:

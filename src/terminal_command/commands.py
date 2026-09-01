@@ -18,11 +18,14 @@ class CommandRegistry:
         return cls(
             [
                 SlashCommand("/capabilities", "List registered capability IDs"),
+                SlashCommand("/checkpoint", "List or create proven recovery checkpoints"),
                 SlashCommand("/doctor", "Check local runtime and optional tools"),
                 SlashCommand("/exit", "Exit terminal-command"),
                 SlashCommand("/explain", "Explain how a request would route without executing it"),
                 SlashCommand("/help", "Show commands and input modes"),
                 SlashCommand("/history", "Show recent action evidence"),
+                SlashCommand("/project", "Register, select, or inspect resumable projects"),
+                SlashCommand("/workflow", "List, inspect, or run saved capability workflows"),
             ]
         )
 
