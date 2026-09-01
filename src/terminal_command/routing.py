@@ -12,10 +12,11 @@ class ModelRouterLike(Protocol):
 
 
 _SHELL_COMMANDS = {
-    "bash", "cat", "cd", "cmd", "cargo", "dir", "docker", "echo", "git",
-    "go", "ls", "node", "npm", "ollama", "pip", "pip3", "pnpm", "powershell",
-    "pwsh", "pwd", "pytest", "python", "python3", "rustc", "type", "where",
-    "which", "winget", "wsl", "wsl.exe",
+    "apt", "bash", "cat", "cd", "cmd", "cargo", "copy", "del", "dir", "docker",
+    "echo", "git", "go", "kill", "ls", "mkdir", "move", "node", "npm", "ollama",
+    "pip", "pip3", "pnpm", "powershell", "pwsh", "pwd", "pytest", "python", "python3",
+    "remove-item", "ren", "rm", "rmdir", "runas", "rustc", "shutdown", "sudo", "taskkill",
+    "touch", "type", "where", "which", "winget", "wsl", "wsl.exe",
 }
 _SHELL_SUFFIXES = (".exe", ".bat", ".cmd", ".ps1", ".sh")
 _SHELL_OPERATORS = ("|", ">", "<", "&&", "||", ";")
