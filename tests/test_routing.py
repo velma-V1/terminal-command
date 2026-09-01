@@ -28,6 +28,17 @@ def test_obvious_shell_command_bypasses_model():
     assert model.calls == []
 
 
+def test_installed_executable_is_treated_as_normal_shell_command(monkeypatch):
+    monkeypatch.setattr(
+        "terminal_command.routing.shutil.which",
+        lambda name: "/usr/bin/customtool" if name == "customtool" else None,
+    )
+    route = Router().route("customtool --status")
+    assert route.input_kind is InputKind.SHELL
+    assert route.source == "shell"
+    assert route.action.command == ["customtool", "--status"]
+
+
 def test_deterministic_natural_language_rule_runs_before_model():
     model = FakeModelRouter()
     route = Router(model_router=model).route("show git status")
