@@ -44,7 +44,7 @@ Deliver a real, testable terminal core—not the complete mature product. Stage 
 Defines stable enums/dataclasses: `InputKind`, `RiskLevel`, `PolicyDecision`, `Action`, `RouteResult`, `ExecutionResult`.
 
 ### `routing.py`
-Classifies raw input. Precedence: explicit `/` command → obvious shell command → deterministic natural-language rule → optional model router → safe unresolved result. The model produces structured JSON only; it never executes.
+Classifies raw input. Precedence: explicit `/` command → known high-confidence natural-language rule → obvious/installed shell command → optional model router → safe unresolved result. Deterministic natural-language rules are deliberately narrow so normal terminal commands still pass through. The model produces structured JSON only; it never executes.
 
 ### `model_router.py`
 Defines `ModelRouter` protocol and optional `OllamaRouter`. Failure, timeout, malformed JSON, or unavailable Ollama returns no route and never blocks ordinary terminal use.
@@ -70,11 +70,11 @@ Interactive prompt loop. Shell commands remain shell commands. Natural language 
 ## Input decision order
 ```text
 raw input
-  -> slash command?          -> slash registry
-  -> obvious shell syntax?   -> shell action
-  -> deterministic NL match? -> structured action
-  -> model available?        -> structured intent JSON
-  -> unresolved              -> explain/ask; never guess-execute
+  -> slash command?             -> slash registry
+  -> known deterministic NL?   -> structured action
+  -> installed/shell command?  -> shell action
+  -> model available?          -> structured intent JSON
+  -> unresolved                -> explain/ask; never guess-execute
 ```
 
 ## Authority separation
@@ -114,7 +114,7 @@ Startup should be fast and visually distinctive but immediately usable. The defa
 
 ## Stage 1 verification gates
 - Unit tests cover contracts, routing precedence, policy, execution command construction, history, doctor, and slash registry.
-- Integration tests prove `echo`/equivalent native execution and history recording on Windows/Linux CI.
+- Integration tests prove platform-neutral native execution and history recording on Windows/Linux CI.
 - Model-router tests use a fake HTTP transport; CI does not require Ollama.
 - No test depends on network access.
 - Windows and Linux CI must pass on Python 3.11 and 3.12.
