@@ -42,3 +42,12 @@ def test_catastrophic_command_is_denied_by_default():
     result = evaluate(["rm", "-rf", "/"])
     assert result.decision is PolicyDecision.DENY
     assert result.risk is RiskLevel.CATASTROPHIC
+
+
+def test_catastrophic_denial_outranks_security_remote_and_approval_metadata():
+    result = evaluate(
+        ["rm", "-rf", "/"],
+        metadata={"security": True, "remote": True, "requires_approval": True},
+    )
+    assert result.decision is PolicyDecision.DENY
+    assert result.risk is RiskLevel.CATASTROPHIC
