@@ -172,7 +172,7 @@ def test_current_pointer_rejects_release_that_does_not_exist(tmp_path):
         switch_current_version(tmp_path / "install", "9.9.9")
 
 
-def test_apply_prepared_release_switches_pointer_only_after_doctor_passes(tmp_path):
+def test_apply_prepared_release_builds_in_final_path_and_switches_only_after_doctor(tmp_path):
     install_root = tmp_path / "install"
     (install_root / "releases" / "0.1.0").mkdir(parents=True)
     switch_current_version(install_root, "0.1.0")
@@ -182,8 +182,10 @@ def test_apply_prepared_release_switches_pointer_only_after_doctor_passes(tmp_pa
     artifact.write_bytes(b"wheel")
 
     commands = []
+    built_paths = []
 
     def fake_venv_builder(release_dir: Path):
+        built_paths.append(release_dir)
         scripts = release_dir / ("Scripts" if os.name == "nt" else "bin")
         scripts.mkdir(parents=True)
         (scripts / ("python.exe" if os.name == "nt" else "python")).write_text("", encoding="utf-8")
@@ -191,6 +193,8 @@ def test_apply_prepared_release_switches_pointer_only_after_doctor_passes(tmp_pa
 
     def fake_runner(command, **kwargs):
         commands.append(list(command))
+        if "--doctor" in command:
+            assert read_current_version(install_root) == "0.1.0"
         return SimpleNamespace(returncode=0, stdout="core: ok", stderr="")
 
     result = apply_prepared_release(
@@ -201,13 +205,16 @@ def test_apply_prepared_release_switches_pointer_only_after_doctor_passes(tmp_pa
         runner=fake_runner,
     )
 
+    final_release = install_root / "releases" / "0.2.0"
     assert result == "0.2.0"
+    assert built_paths == [final_release]
+    assert final_release.is_dir()
     assert read_current_version(install_root) == "0.2.0"
     assert any("pip" in part for command in commands for part in command)
     assert any("--doctor" in command for command in commands)
 
 
-def test_apply_failure_leaves_current_release_unchanged(tmp_path):
+def test_apply_failure_leaves_current_release_unchanged_and_removes_candidate(tmp_path):
     install_root = tmp_path / "install"
     (install_root / "releases" / "0.1.0").mkdir(parents=True)
     switch_current_version(install_root, "0.1.0")
@@ -240,3 +247,4 @@ def test_apply_failure_leaves_current_release_unchanged(tmp_path):
             runner=fake_runner,
         )
     assert read_current_version(install_root) == "0.1.0"
+    assert not (install_root / "releases" / "0.2.0").exists()
