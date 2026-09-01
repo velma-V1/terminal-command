@@ -57,9 +57,9 @@ public sealed class WindowsJobObjectSupervisorTests
             var supervisor = new WindowsJobObjectSupervisor(maxCaptureBytes: 64 * 1024);
 
             var result = await supervisor.ExecuteAsync(Request(action), cancellationToken);
+            AssertStatus(result, ProcessExecutionStatus.Exited);
             var text = Encoding.UTF8.GetString(result.Stdout!.Captured.Span).Replace("\r", string.Empty, StringComparison.Ordinal);
 
-            Assert.Equal(ProcessExecutionStatus.Exited, result.Status);
             Assert.Equal(0, result.ExitCode);
             Assert.Contains("bound-value\n", text, StringComparison.Ordinal);
             Assert.Contains(directory.FullName, text, StringComparison.OrdinalIgnoreCase);
@@ -84,7 +84,7 @@ public sealed class WindowsJobObjectSupervisorTests
 
         var result = await supervisor.ExecuteAsync(Request(action), cancellationToken);
 
-        Assert.Equal(ProcessExecutionStatus.Exited, result.Status);
+        AssertStatus(result, ProcessExecutionStatus.Exited);
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(4096, result.Stdout!.Captured.Length);
         Assert.True(result.Stdout.Truncated);
@@ -113,7 +113,7 @@ public sealed class WindowsJobObjectSupervisorTests
             var result = await supervisor.ExecuteAsync(Request(action), cancellationToken);
             await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
 
-            Assert.Equal(ProcessExecutionStatus.TimedOut, result.Status);
+            AssertStatus(result, ProcessExecutionStatus.TimedOut);
             Assert.False(File.Exists(marker));
         }
         finally
@@ -137,9 +137,14 @@ public sealed class WindowsJobObjectSupervisorTests
 
         var result = await supervisor.ExecuteAsync(Request(action), cts.Token);
 
-        Assert.Equal(ProcessExecutionStatus.Cancelled, result.Status);
+        AssertStatus(result, ProcessExecutionStatus.Cancelled);
         Assert.Equal(ProcessContainmentBoundary.WindowsJobObject, result.Metrics!.Containment);
     }
+
+    private static void AssertStatus(ProcessExecutionResult result, ProcessExecutionStatus expected)
+        => Assert.True(
+            result.Status == expected,
+            $"Expected {expected} but got {result.Status}. Native failure: {result.ErrorMessage ?? "<none>"}");
 
     private static ProcessExecutionRequest Request(TerminalAction action)
         => new(Guid.NewGuid(), Guid.NewGuid(), action);
