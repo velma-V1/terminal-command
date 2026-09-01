@@ -60,8 +60,11 @@ def test_update_apply_rejects_tampered_staged_artifact_before_install(tmp_path, 
         encoding="utf-8",
     )
 
+    def unexpected_builder(_path):
+        raise RuntimeError("venv builder unexpectedly reached before sha256 verification")
+
     monkeypatch.setenv("TERMINAL_COMMAND_INSTALL_ROOT", str(install_root))
-    monkeypatch.setattr("terminal_command.app.apply_prepared_release", lambda *args, **kwargs: "0.2.0")
+    monkeypatch.setattr("terminal_command.update._default_venv_builder", unexpected_builder)
 
     outcome = _app(tmp_path).handle("/update apply 0.2.0", approved=True)
 
