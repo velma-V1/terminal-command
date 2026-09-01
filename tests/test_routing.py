@@ -39,6 +39,19 @@ def test_installed_executable_is_treated_as_normal_shell_command(monkeypatch):
     assert route.action.command == ["customtool", "--status"]
 
 
+def test_high_confidence_natural_language_beats_ambiguous_shell_keyword():
+    route = Router().route("where am i")
+    assert route.input_kind is InputKind.NATURAL_LANGUAGE
+    assert route.source == "deterministic"
+    assert route.rule_id == "nl.pwd"
+
+
+def test_real_where_shell_command_still_passes_through():
+    route = Router().route("where python")
+    assert route.input_kind is InputKind.SHELL
+    assert route.source == "shell"
+
+
 def test_deterministic_natural_language_rule_runs_before_model():
     model = FakeModelRouter()
     route = Router(model_router=model).route("show git status")
