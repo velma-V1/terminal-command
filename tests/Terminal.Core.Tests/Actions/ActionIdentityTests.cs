@@ -14,14 +14,17 @@ public sealed class ActionIdentityTests
     }
 
     [Theory]
+    [InlineData("origin")]
+    [InlineData("capability")]
+    [InlineData("operation")]
     [InlineData("arguments")]
     [InlineData("workingDirectory")]
     [InlineData("backend")]
-    [InlineData("capability")]
     [InlineData("environment")]
     [InlineData("scope")]
     [InlineData("target")]
     [InlineData("timeout")]
+    [InlineData("memory")]
     [InlineData("mutation")]
     [InlineData("recovery")]
     [InlineData("provenance")]
@@ -83,20 +86,27 @@ public sealed class ActionIdentityTests
                 provenance: "user",
                 createdAt: createdAt);
 
-        public static TerminalAction Change(TerminalAction action, string field) => field switch
-        {
-            "arguments" => action.With(arguments: ["status", "--short"]),
-            "workingDirectory" => action.With(workingDirectory: "C:\\other"),
-            "backend" => action.With(backend: ActionBackend.Wsl),
-            "capability" => action.With(capabilityId: "git.diff"),
-            "environment" => action.With(environmentDelta: new Dictionary<string, string?> { ["TERM"] = "vt100" }),
-            "scope" => action.With(scope: new Dictionary<string, string> { ["filesystem"] = "read:C:\\other" }),
-            "target" => action.With(targetIdentity: "repo:456"),
-            "timeout" => action.With(timeout: TimeSpan.FromSeconds(31)),
-            "mutation" => action.With(mutation: MutationClass.LocalMutation),
-            "recovery" => action.With(recovery: RecoveryClass.Checkpointable),
-            "provenance" => action.With(provenance: "workflow"),
-            _ => throw new ArgumentOutOfRangeException(nameof(field), field, null)
-        };
+        public static TerminalAction Change(TerminalAction action, string field)
+            => new(
+                actionId: Guid.NewGuid(),
+                origin: field == "origin" ? "workflow" : action.Origin,
+                capabilityId: field == "capability" ? "git.diff" : action.CapabilityId,
+                operation: field == "operation" ? "git-other" : action.Operation,
+                arguments: field == "arguments" ? ["status", "--short"] : action.Arguments,
+                backend: field == "backend" ? ActionBackend.Wsl : action.Backend,
+                workingDirectory: field == "workingDirectory" ? "C:\\other" : action.WorkingDirectory,
+                environmentDelta: field == "environment"
+                    ? new Dictionary<string, string?> { ["TERM"] = "vt100" }
+                    : action.EnvironmentDelta,
+                targetIdentity: field == "target" ? "repo:456" : action.TargetIdentity,
+                scope: field == "scope"
+                    ? new Dictionary<string, string> { ["filesystem"] = "read:C:\\other" }
+                    : action.Scope,
+                timeout: field == "timeout" ? TimeSpan.FromSeconds(31) : action.Timeout,
+                memoryLimitBytes: field == "memory" ? action.MemoryLimitBytes + 1 : action.MemoryLimitBytes,
+                mutation: field == "mutation" ? MutationClass.LocalMutation : action.Mutation,
+                recovery: field == "recovery" ? RecoveryClass.Checkpointable : action.Recovery,
+                provenance: field == "provenance" ? "automation" : action.Provenance,
+                createdAt: action.CreatedAt.AddSeconds(1));
     }
 }
