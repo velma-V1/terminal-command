@@ -13,6 +13,8 @@ public enum TransactionState
     Indeterminate,
     RollingBack,
     RolledBack,
+    RollbackFailed,
     Compensating,
-    Compensated
+    Compensated,
+    CompensationFailed
 }
