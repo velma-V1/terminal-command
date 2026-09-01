@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Callable
 
 from .contracts import Action
@@ -130,7 +129,7 @@ def default_capabilities() -> CapabilityRegistry:
             id="git.status",
             description="Show repository status",
             aliases=("show repository status", "show git status", "show me git status", "what changed in git"),
-            builder=lambda args: Action("git.status", ["git", "status"]),
+            builder=lambda args: Action("git.status", ["git", "status"], metadata={"capability_id": "git.status", "read_only": True}),
         )
     )
     registry.register(
@@ -141,6 +140,7 @@ def default_capabilities() -> CapabilityRegistry:
             builder=lambda args: Action(
                 "system.cwd",
                 ["cmd", "/c", "cd"] if os.name == "nt" else ["pwd"],
+                metadata={"capability_id": "system.cwd", "read_only": True},
             ),
         )
     )
@@ -152,7 +152,11 @@ def default_capabilities() -> CapabilityRegistry:
             builder=lambda args: Action(
                 "files.list",
                 ["cmd", "/c", "dir"] if os.name == "nt" else ["ls", "-la"],
+                metadata={"capability_id": "files.list", "read_only": True},
             ),
         )
     )
+    from .packs.engineering import register_engineering_pack
+
+    register_engineering_pack(registry)
     return registry

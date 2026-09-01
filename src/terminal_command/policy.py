@@ -16,6 +16,8 @@ class PolicyEngine:
     def evaluate(self, action: Action) -> PolicyResult:
         text = self._normalized(action)
 
+        if action.metadata.get("remote") is True:
+            return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.PRIVILEGED, "Remote action requires explicit approval")
         if self._catastrophic(text):
             return PolicyResult(PolicyDecision.DENY, RiskLevel.CATASTROPHIC, "Catastrophic system-wide destructive pattern")
         if self._privileged(text):
@@ -24,6 +26,8 @@ class PolicyEngine:
             return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.DESTRUCTIVE, "Destructive command")
         if self._mutating(text):
             return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.MUTATING, "Command changes local or remote state")
+        if action.metadata.get("read_only") is True and action.metadata.get("capability_id"):
+            return PolicyResult(PolicyDecision.ALLOW, RiskLevel.READ_ONLY, "Registered read-only capability")
         if self._read_only(action, text):
             return PolicyResult(PolicyDecision.ALLOW, RiskLevel.READ_ONLY, "Known read-only command family")
         return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.UNKNOWN, "Unknown action defaults to approval")
