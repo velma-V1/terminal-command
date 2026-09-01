@@ -63,4 +63,15 @@ public sealed class FrameCodecTests
 
         Assert.Throws<InvalidDataException>(() => FrameCodec.Decode(encoded));
     }
+
+    [Fact]
+    public void Unknown_message_type_is_rejected()
+    {
+        var header = new FrameHeader(ProtocolVersion.Current, ProtocolMessageType.Health, Guid.NewGuid(), 0);
+        var encoded = FrameCodec.Encode(header, []);
+        encoded[8] = 0xFF;
+        encoded[9] = 0x7F;
+
+        Assert.Throws<InvalidDataException>(() => FrameCodec.Decode(encoded));
+    }
 }
