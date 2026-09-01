@@ -49,6 +49,26 @@ public sealed class TerminalAction
         string provenance,
         DateTimeOffset createdAt)
     {
+        if (actionId == Guid.Empty)
+        {
+            throw new ArgumentException("Action ID must not be empty.", nameof(actionId));
+        }
+
+        if (capabilityId is not null && string.IsNullOrWhiteSpace(capabilityId))
+        {
+            throw new ArgumentException("Capability ID must be null or non-empty.", nameof(capabilityId));
+        }
+
+        if (timeout is { } duration && duration <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be positive when supplied.");
+        }
+
+        if (memoryLimitBytes is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(memoryLimitBytes), "Memory limit must be positive when supplied.");
+        }
+
         ActionId = actionId;
         Origin = Required(origin, nameof(origin));
         CapabilityId = capabilityId;
@@ -83,39 +103,6 @@ public sealed class TerminalAction
     public RecoveryClass Recovery { get; }
     public string Provenance { get; }
     public DateTimeOffset CreatedAt { get; }
-
-    public TerminalAction With(
-        string? origin = null,
-        string? capabilityId = null,
-        string? operation = null,
-        IReadOnlyList<string>? arguments = null,
-        ActionBackend? backend = null,
-        string? workingDirectory = null,
-        IReadOnlyDictionary<string, string?>? environmentDelta = null,
-        string? targetIdentity = null,
-        IReadOnlyDictionary<string, string>? scope = null,
-        TimeSpan? timeout = null,
-        long? memoryLimitBytes = null,
-        MutationClass? mutation = null,
-        RecoveryClass? recovery = null,
-        string? provenance = null)
-        => new(
-            ActionId,
-            origin ?? Origin,
-            capabilityId ?? CapabilityId,
-            operation ?? Operation,
-            arguments ?? Arguments,
-            backend ?? Backend,
-            workingDirectory ?? WorkingDirectory,
-            environmentDelta ?? EnvironmentDelta,
-            targetIdentity ?? TargetIdentity,
-            scope ?? Scope,
-            timeout ?? Timeout,
-            memoryLimitBytes ?? MemoryLimitBytes,
-            mutation ?? Mutation,
-            recovery ?? Recovery,
-            provenance ?? Provenance,
-            CreatedAt);
 
     private static string Required(string value, string name)
         => string.IsNullOrWhiteSpace(value)
