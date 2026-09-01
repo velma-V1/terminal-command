@@ -120,9 +120,9 @@ public sealed class WindowsJobObjectSupervisor : IProcessSupervisor
                 return Failed(request.ExecutionId, $"AssignProcessToJobObject failed with error {Marshal.GetLastPInvokeError()}.");
             }
 
-            await using var stdoutStream = new FileStream(stdoutRead, FileAccess.Read, 16 * 1024, isAsync: true);
+            await using var stdoutStream = new FileStream(stdoutRead, FileAccess.Read, 16 * 1024, isAsync: false);
             stdoutRead = null;
-            await using var stderrStream = new FileStream(stderrRead, FileAccess.Read, 16 * 1024, isAsync: true);
+            await using var stderrStream = new FileStream(stderrRead, FileAccess.Read, 16 * 1024, isAsync: false);
             stderrRead = null;
             var stdoutTask = StreamCapture.CaptureAsync(stdoutStream, _maxCaptureBytes, CancellationToken.None).AsTask();
             var stderrTask = StreamCapture.CaptureAsync(stderrStream, _maxCaptureBytes, CancellationToken.None).AsTask();
