@@ -24,11 +24,11 @@ Prove the base experience preserves the terminal semantics users expect:
 Prefer ConPTY/PTY and operating-system primitives over building a terminal emulator.
 
 ## Q2 — What exactly is an Action?
-Define one canonical, immutable executable object containing every field that can materially change what happens: command/arguments, cwd, backend, environment delta, capability, scope, resource limits, provenance, and mutation/recovery metadata.
+Define one canonical, immutable executable object containing every field that can materially change what happens: command/arguments, cwd, backend, environment delta, capability, scope, resource limits, provenance, stable target identity where available, and mutation/recovery metadata.
 
-Can the same action serialize deterministically and produce the same `action_hash`?
+Can the same Action serialize deterministically and produce the same `action_hash`?
 
-## Q3 — Is authorization bound to the exact Action?
+## Q3 — Is authorization bound to the exact Action and the same real-world target?
 Policy and approval must authorize the canonical `action_hash`, not the original user sentence.
 
 Ask:
@@ -37,20 +37,22 @@ Ask:
 - Is approval checked immediately before execution?
 - Are tickets single-purpose and time-bounded where appropriate?
 - Do catastrophic denies outrank every approval mechanism?
+- Can a symlink/reparse point, DNS answer, redirect, resolved path, or other mutable reference silently change what the approved Action means?
 
-If YES is not provable, execution is unsafe.
+Bind stable resource identities where practical; otherwise revalidate immediately before use and require new authorization when meaning materially changes.
 
-## Q4 — What trust boundary should execute this Action?
-For each action choose the least risky boundary that still works:
+If this is not provable, execution is unsafe.
 
-```text
-native Windows
-→ WSL
-→ disposable container/sandbox
-→ explicitly scoped remote target
-```
+## Q4 — Is there exactly one non-bypassable path to consequential side effects?
+Routers, models, workflows, capability builders, views, and future plugins should only construct/request Actions. The execution broker should be the sole supported path to process, filesystem, network, package, remote, or privileged mutations.
 
-Trust-boundary selection must come from deterministic policy/capability requirements, not model preference alone.
+Ask:
+- Can capability/plugin code call the OS directly and bypass policy/evidence?
+- Does the main app unnecessarily run elevated?
+- Can privileged work use a narrowly scoped short-lived helper instead?
+- What trust boundary should execute the Action: native Windows, WSL, disposable container/sandbox, or explicit remote target?
+
+Trust and privilege selection must come from deterministic policy/capability requirements, not model preference alone.
 
 ## Q5 — How is the process actually supervised?
 Define process lifecycle independently from task logic:
@@ -66,7 +68,7 @@ Define process lifecycle independently from task logic:
 A command runner that captures everything and waits is not sufficient terminal infrastructure.
 
 ## Q6 — What is the transaction lifecycle?
-Every consequential action needs a durable state model such as:
+Every consequential Action needs a durable state model such as:
 
 ```text
 PREPARED
@@ -108,6 +110,7 @@ Before persistence ask:
 - Are outputs bounded?
 - Are large artifacts stored separately and referenced by digest?
 - Is action hash/execution/verifier/checkpoint/escalation provenance recorded?
+- Does context/evidence distinguish user, local-system, trusted-project, external-untrusted, and model-generated sources?
 - Can concurrent writes corrupt or silently overwrite evidence?
 - Would optional hash chaining provide useful tamper evidence, or merely complexity?
 
@@ -150,10 +153,12 @@ A capability may need to declare:
 - recovery/checkpoint strategy;
 - provenance/version.
 
+Capability builders should be side-effect-free: normalize/validate input and construct Actions, not execute them.
+
 Keep metadata optional when meaningless. The contract should eliminate duplicated safety logic, not create bureaucracy.
 
 ## Q13 — How do workflows, projects, and jobs compose without gaining hidden authority?
-Workflows must invoke normal capabilities through the same action/policy/execution/verification pipeline.
+Workflows must invoke normal capabilities through the same Action/policy/execution/verification pipeline.
 
 Ask:
 - Are retries bounded and evidence-driven?
@@ -176,16 +181,19 @@ explicit /command
 
 Measure wrong-action rate, not only intent-classification accuracy. Raw model-generated shell is compatibility-only and approval-gated.
 
-## Q15 — What intelligence earns the right to run?
+## Q15 — What intelligence earns the right to run, and what data may leave the machine?
 Define separately:
 - tiny-model responsibilities;
 - stronger-model escalation triggers;
 - context budget;
-- allowed outputs;
+- context provenance/trust labels;
+- allowed model outputs;
+- external data-egress policy;
+- secret/credential exclusion;
 - failure/timeout behavior;
 - model-unavailable behavior.
 
-A larger model may reason better; it does **not** receive more machine authority merely because it is larger.
+A larger model may reason better; it does **not** receive more machine authority merely because it is larger. External content is evidence/input, not operator instruction. External models receive only the data deterministically permitted for that request.
 
 ## Q16 — Which capability breadth creates the most value after the foundation is trustworthy?
 Rank additions by:
@@ -246,12 +254,15 @@ trusted release provenance
 → rollback
 ```
 
-Stable/development channels must actually map to different trusted release sources. No silent startup mutation. Apply the same provenance logic to third-party capability packs if they are ever supported.
+Stable/development channels must actually map to different trusted release sources. No silent startup mutation. Apply the same provenance and broker-isolation logic to third-party capability packs if they are ever supported.
 
 ## Q20 — What evidence proves the architecture is ready?
 Release evidence should cover more than unit tests:
 - terminal/session fidelity;
 - exact-action approval binding;
+- mutable-target revalidation;
+- broker-bypass prevention;
+- narrow privileged-helper behavior;
 - catastrophic-action prevention;
 - process cancellation/tree cleanup;
 - output bounds;
@@ -259,7 +270,7 @@ Release evidence should cover more than unit tests:
 - crash transaction reconciliation;
 - rollback/compensation success by declared class;
 - verifier-confirmed task success;
-- secret persistence rate = zero for known test cases;
+- secret persistence and unauthorized external-egress rate = zero for known test cases;
 - concurrent-state correctness;
 - deterministic/tiny/strong-model comparison;
 - unsafe-action rate;
@@ -273,6 +284,6 @@ Release evidence should cover more than unit tests:
 The key experimental measure is **verified useful capability per model size/compute without sacrificing safety or hiding complexity in the harness**.
 
 ## Final architectural law
-> **The model understands and proposes. The system identifies the exact action, decides authority, chooses the execution boundary, executes, recovers, verifies, and records what was actually proven.**
+> **The model understands and proposes. The system identifies the exact Action, decides authority, chooses the execution boundary, executes through a non-bypassable broker, recovers, verifies, and records what was actually proven.**
 
 Run Q0–Q20 before locking architecture, after meaningful prototypes expose new facts, before admitting anything into core, and before a production release.
