@@ -172,9 +172,16 @@ def default_capabilities() -> CapabilityRegistry:
             ),
         )
     )
+
     from .packs.daily import register_daily_pack
     from .packs.engineering import register_engineering_pack
+    from .packs.security import register_security_pack
+    from .remote import register_remote_capabilities
+    from .web_adapter import register_web_capability
 
     register_engineering_pack(registry)
     register_daily_pack(registry)
+    register_security_pack(registry)
+    register_web_capability(registry)
+    register_remote_capabilities(registry)
     return registry

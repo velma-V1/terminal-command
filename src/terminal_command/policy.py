@@ -16,6 +16,8 @@ class PolicyEngine:
     def evaluate(self, action: Action) -> PolicyResult:
         text = self._normalized(action)
 
+        if action.metadata.get("security") is True:
+            return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.PRIVILEGED, "Security action requires explicit approval")
         if action.metadata.get("remote") is True:
             return PolicyResult(PolicyDecision.REQUIRE_APPROVAL, RiskLevel.PRIVILEGED, "Remote action requires explicit approval")
         if self._catastrophic(text):
