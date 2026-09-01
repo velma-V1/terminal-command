@@ -42,13 +42,13 @@ class Router:
                 rule_id=f"slash.{name}",
             )
 
-        shell = self._shell_route(raw)
-        if shell:
-            return shell
-
         deterministic = self._deterministic_route(raw)
         if deterministic:
             return deterministic
+
+        shell = self._shell_route(raw)
+        if shell:
+            return shell
 
         if self.model_router is not None:
             try:
