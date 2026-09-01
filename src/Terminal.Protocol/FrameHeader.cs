@@ -6,4 +6,16 @@ public readonly record struct FrameHeader(
     Guid RequestId,
     int PayloadLength);
 
-public sealed record ProtocolFrame(FrameHeader Header, byte[] Payload);
+public sealed class ProtocolFrame
+{
+    private readonly byte[] _payload;
+
+    public ProtocolFrame(FrameHeader header, ReadOnlySpan<byte> payload)
+    {
+        Header = header;
+        _payload = payload.ToArray();
+    }
+
+    public FrameHeader Header { get; }
+    public ReadOnlyMemory<byte> Payload => _payload;
+}
