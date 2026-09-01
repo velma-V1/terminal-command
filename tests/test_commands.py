@@ -3,7 +3,7 @@ from terminal_command.commands import CommandRegistry
 
 def test_default_registry_contains_core_commands():
     registry = CommandRegistry.default()
-    assert registry.names() == ["/doctor", "/exit", "/help", "/history"]
+    assert registry.names() == ["/capabilities", "/doctor", "/exit", "/explain", "/help", "/history"]
     assert registry.resolve("/doctor").name == "/doctor"
 
 
