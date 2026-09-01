@@ -1,3 +1,5 @@
+> **SUPERSEDED:** This V1 product design is preserved as historical prototype context. Future architecture and implementation decisions must use [`2026-09-01-terminal-command-v2-architecture.md`](2026-09-01-terminal-command-v2-architecture.md) and the V2 Q0–Q20 review.
+
 # Terminal Command Product Design
 
 ## Purpose
