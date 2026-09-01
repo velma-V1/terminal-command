@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup><Using Include="Xunit" /></ItemGroup>
+  <ItemGroup><PackageReference Include="xunit.v3.mtp-v2" Version="3.2.2" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Terminal.Core/Terminal.Core.csproj" />
+    <ProjectReference Include="../../src/Terminal.Execution/Terminal.Execution.csproj" />
+    <ProjectReference Include="../../src/Terminal.Protocol/Terminal.Protocol.csproj" />
+    <ProjectReference Include="../../src/Terminal.Windows/Terminal.Windows.csproj" />
+  </ItemGroup>
+</Project>
