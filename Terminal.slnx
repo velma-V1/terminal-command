@@ -1,8 +1,10 @@
 <Solution>
   <Project Path="src/Terminal.Core/Terminal.Core.csproj" />
+  <Project Path="src/Terminal.Execution/Terminal.Execution.csproj" />
   <Project Path="src/Terminal.Protocol/Terminal.Protocol.csproj" />
   <Project Path="src/Terminal.State/Terminal.State.csproj" />
   <Project Path="tests/Terminal.Core.Tests/Terminal.Core.Tests.csproj" />
+  <Project Path="tests/Terminal.Execution.Tests/Terminal.Execution.Tests.csproj" />
   <Project Path="tests/Terminal.Protocol.Tests/Terminal.Protocol.Tests.csproj" />
   <Project Path="tests/Terminal.State.Tests/Terminal.State.Tests.csproj" />
 </Solution>
