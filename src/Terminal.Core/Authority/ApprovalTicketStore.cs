@@ -4,51 +4,66 @@ namespace Terminal.Core.Authority;
 
 public interface IApprovalTicketStore
 {
-    void Add(ApprovalTicket ticket);
+    ValueTask AddAsync(
+        ApprovalTicket ticket,
+        CancellationToken cancellationToken = default);
 
-    ApprovalTicketUseResult Consume(
+    ValueTask<ApprovalTicketUseResult> ConsumeAsync(
         Guid ticketId,
         Guid actionId,
         string actionHash,
-        DateTimeOffset now);
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class InMemoryApprovalTicketStore : IApprovalTicketStore
 {
     private readonly ConcurrentDictionary<Guid, ApprovalTicket> _tickets = new();
 
-    public void Add(ApprovalTicket ticket)
+    public ValueTask AddAsync(
+        ApprovalTicket ticket,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(ticket);
+
         if (!_tickets.TryAdd(ticket.TicketId, ticket))
         {
             throw new InvalidOperationException($"Approval ticket {ticket.TicketId} already exists.");
         }
+
+        return ValueTask.CompletedTask;
     }
 
-    public ApprovalTicketUseResult Consume(
+    public ValueTask<ApprovalTicketUseResult> ConsumeAsync(
         Guid ticketId,
         Guid actionId,
         string actionHash,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        CancellationToken cancellationToken = default)
     {
         while (true)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             if (!_tickets.TryGetValue(ticketId, out var current))
             {
-                return new ApprovalTicketUseResult(ApprovalValidation.NotFound, null);
+                return ValueTask.FromResult(
+                    new ApprovalTicketUseResult(ApprovalValidation.NotFound, null));
             }
 
             var validation = current.Validate(actionId, actionHash, now);
             if (validation != ApprovalValidation.Valid)
             {
-                return new ApprovalTicketUseResult(validation, current);
+                return ValueTask.FromResult(
+                    new ApprovalTicketUseResult(validation, current));
             }
 
             var consumed = current.MarkConsumed(now);
             if (_tickets.TryUpdate(ticketId, consumed, current))
             {
-                return new ApprovalTicketUseResult(ApprovalValidation.Valid, consumed);
+                return ValueTask.FromResult(
+                    new ApprovalTicketUseResult(ApprovalValidation.Valid, consumed));
             }
         }
     }
