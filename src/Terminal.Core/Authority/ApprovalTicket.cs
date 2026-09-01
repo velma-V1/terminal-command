@@ -88,6 +88,39 @@ public sealed record ApprovalTicket
     internal ApprovalTicket MarkConsumed(DateTimeOffset now)
         => new(TicketId, ActionId, ActionHash, IssuedAt, ExpiresAt, now);
 
+    internal static ApprovalTicket Restore(
+        Guid ticketId,
+        Guid actionId,
+        string actionHash,
+        DateTimeOffset issuedAt,
+        DateTimeOffset expiresAt,
+        DateTimeOffset? consumedAt)
+    {
+        if (ticketId == Guid.Empty)
+        {
+            throw new InvalidDataException("Persisted approval ticket ID must not be empty.");
+        }
+
+        if (actionId == Guid.Empty)
+        {
+            throw new InvalidDataException("Persisted approval action ID must not be empty.");
+        }
+
+        ValidateSha256(actionHash);
+
+        if (expiresAt <= issuedAt)
+        {
+            throw new InvalidDataException("Persisted approval ticket expiry must be after issuance.");
+        }
+
+        if (consumedAt is not null && consumedAt < issuedAt)
+        {
+            throw new InvalidDataException("Persisted approval ticket cannot be consumed before issuance.");
+        }
+
+        return new ApprovalTicket(ticketId, actionId, actionHash, issuedAt, expiresAt, consumedAt);
+    }
+
     private static void ValidateSha256(string actionHash)
     {
         if (actionHash is null || actionHash.Length != 64 || actionHash.Any(static c => !IsLowerHex(c)))
