@@ -52,11 +52,12 @@ public sealed class PolicyEngineTests
     }
 
     [Fact]
-    public void Stale_or_unrevalidated_target_cannot_auto_execute()
+    public void Stale_or_unrevalidated_target_is_blocked_until_revalidated()
     {
         var decision = _engine.Evaluate(Action(MutationClass.Observe), Facts(targetRevalidated: false));
-        Assert.Equal(PolicyDecisionKind.RequireApproval, decision.Kind);
+        Assert.Equal(PolicyDecisionKind.Deny, decision.Kind);
         Assert.True(decision.RequiresTargetRevalidation);
+        Assert.Equal("target-revalidation-required", decision.ReasonCode);
     }
 
     private static TerminalAction Action(
