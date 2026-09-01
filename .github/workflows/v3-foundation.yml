@@ -4,21 +4,28 @@ on:
   push:
     branches: [feat/v3-greenfield-terminal]
     paths:
-      - 'src/Terminal.**'
-      - 'tests/Terminal.**'
+      - 'src/Terminal.*/**'
+      - 'tests/Terminal.*/**'
       - 'Terminal.slnx'
       - 'Directory.Build.props'
+      - 'global.json'
       - '.github/workflows/v3-foundation.yml'
   pull_request:
     paths:
-      - 'src/Terminal.**'
-      - 'tests/Terminal.**'
+      - 'src/Terminal.*/**'
+      - 'tests/Terminal.*/**'
       - 'Terminal.slnx'
       - 'Directory.Build.props'
+      - 'global.json'
       - '.github/workflows/v3-foundation.yml'
 
 permissions:
   contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  TESTINGPLATFORM_TELEMETRY_OPTOUT: '1'
 
 jobs:
   test:
@@ -28,13 +35,17 @@ jobs:
         os: [windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          dotnet-version: '10.0.x'
+          persist-credentials: false
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.400'
       - name: Restore
         run: dotnet restore Terminal.slnx
       - name: Build
         run: dotnet build Terminal.slnx --configuration Release --no-restore
       - name: Test
-        run: dotnet test Terminal.slnx --configuration Release --no-build --logger "trx;LogFileName=v3-foundation.trx"
+        run: dotnet test Terminal.slnx --configuration Release --no-build
