@@ -16,7 +16,7 @@ public sealed class FrameCodecTests
         Assert.Equal(header.Version, decoded.Header.Version);
         Assert.Equal(header.MessageType, decoded.Header.MessageType);
         Assert.Equal(header.RequestId, decoded.Header.RequestId);
-        Assert.Equal(payload, decoded.Payload);
+        Assert.Equal(payload, decoded.Payload.ToArray());
     }
 
     [Fact]
@@ -52,5 +52,15 @@ public sealed class FrameCodecTests
         var header = new FrameHeader(ProtocolVersion.Current, ProtocolMessageType.Health, Guid.NewGuid(), 5);
 
         Assert.Throws<InvalidDataException>(() => FrameCodec.Encode(header, [1, 2]));
+    }
+
+    [Fact]
+    public void Nonzero_reserved_flags_are_rejected()
+    {
+        var header = new FrameHeader(ProtocolVersion.Current, ProtocolMessageType.Health, Guid.NewGuid(), 0);
+        var encoded = FrameCodec.Encode(header, []);
+        encoded[10] = 1;
+
+        Assert.Throws<InvalidDataException>(() => FrameCodec.Decode(encoded));
     }
 }
