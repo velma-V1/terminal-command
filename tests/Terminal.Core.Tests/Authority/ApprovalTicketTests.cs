@@ -9,55 +9,71 @@ public sealed class ApprovalTicketTests
     private const string HashB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
     [Fact]
-    public void Ticket_accepts_only_bound_action_hash()
+    public void Ticket_binds_both_action_id_and_semantic_hash()
     {
-        var ticket = ApprovalTicket.Issue(HashA, Now, TimeSpan.FromMinutes(5), [1, 2, 3, 4]);
+        var actionId = Guid.NewGuid();
+        var ticket = ApprovalTicket.Issue(actionId, HashA, Now, TimeSpan.FromMinutes(5));
 
-        Assert.Equal(ApprovalValidation.Valid, ticket.Validate(HashA, Now.AddMinutes(1)));
-        Assert.Equal(ApprovalValidation.WrongAction, ticket.Validate(HashB, Now.AddMinutes(1)));
+        Assert.Equal(ApprovalValidation.Valid, ticket.Validate(actionId, HashA, Now.AddMinutes(1)));
+        Assert.Equal(ApprovalValidation.WrongAction, ticket.Validate(Guid.NewGuid(), HashA, Now.AddMinutes(1)));
+        Assert.Equal(ApprovalValidation.WrongAction, ticket.Validate(actionId, HashB, Now.AddMinutes(1)));
     }
 
     [Fact]
-    public void Expired_ticket_is_rejected()
+    public void Ticket_is_expired_at_expiry_boundary()
     {
-        var ticket = ApprovalTicket.Issue(HashA, Now, TimeSpan.FromSeconds(30), [1, 2, 3, 4]);
+        var actionId = Guid.NewGuid();
+        var ticket = ApprovalTicket.Issue(actionId, HashA, Now, TimeSpan.FromSeconds(30));
 
-        Assert.Equal(ApprovalValidation.Expired, ticket.Validate(HashA, Now.AddSeconds(31)));
+        Assert.Equal(ApprovalValidation.Expired, ticket.Validate(actionId, HashA, Now.AddSeconds(30)));
     }
 
     [Fact]
-    public void Consuming_ticket_returns_consumed_copy_and_prevents_reuse()
+    public void Store_allows_exactly_one_successful_consumption()
     {
-        var ticket = ApprovalTicket.Issue(HashA, Now, TimeSpan.FromMinutes(5), [1, 2, 3, 4]);
+        var actionId = Guid.NewGuid();
+        var ticket = ApprovalTicket.Issue(actionId, HashA, Now, TimeSpan.FromMinutes(5));
+        var store = new InMemoryApprovalTicketStore();
+        store.Add(ticket);
 
-        var first = ticket.Consume(HashA, Now.AddSeconds(1));
-        var second = first.Ticket.Consume(HashA, Now.AddSeconds(2));
+        var first = store.Consume(ticket.TicketId, actionId, HashA, Now.AddSeconds(1));
+        var second = store.Consume(ticket.TicketId, actionId, HashA, Now.AddSeconds(2));
 
         Assert.Equal(ApprovalValidation.Valid, first.Validation);
-        Assert.NotNull(first.Ticket.ConsumedAt);
-        Assert.Equal(ApprovalValidation.Consumed, first.Ticket.Validate(HashA, Now.AddSeconds(2)));
+        Assert.NotNull(first.Ticket?.ConsumedAt);
         Assert.Equal(ApprovalValidation.Consumed, second.Validation);
     }
 
     [Fact]
     public void Failed_consumption_does_not_consume_ticket()
     {
-        var ticket = ApprovalTicket.Issue(HashA, Now, TimeSpan.FromMinutes(5), [1, 2, 3, 4]);
+        var actionId = Guid.NewGuid();
+        var ticket = ApprovalTicket.Issue(actionId, HashA, Now, TimeSpan.FromMinutes(5));
+        var store = new InMemoryApprovalTicketStore();
+        store.Add(ticket);
 
-        var wrong = ticket.Consume(HashB, Now.AddSeconds(1));
+        var wrong = store.Consume(ticket.TicketId, Guid.NewGuid(), HashA, Now.AddSeconds(1));
+        var correct = store.Consume(ticket.TicketId, actionId, HashA, Now.AddSeconds(2));
 
         Assert.Equal(ApprovalValidation.WrongAction, wrong.Validation);
-        Assert.Null(wrong.Ticket.ConsumedAt);
-        Assert.Equal(ApprovalValidation.Valid, wrong.Ticket.Validate(HashA, Now.AddSeconds(2)));
+        Assert.Equal(ApprovalValidation.Valid, correct.Validation);
     }
 
     [Fact]
-    public void Separate_issues_have_distinct_ticket_identity_and_nonce_hash()
+    public void Separate_issues_have_distinct_ticket_identity()
     {
-        var first = ApprovalTicket.Issue(HashA, Now, TimeSpan.FromMinutes(5), [1, 2, 3, 4]);
-        var second = ApprovalTicket.Issue(HashA, Now, TimeSpan.FromMinutes(5), [5, 6, 7, 8]);
+        var actionId = Guid.NewGuid();
+        var first = ApprovalTicket.Issue(actionId, HashA, Now, TimeSpan.FromMinutes(5));
+        var second = ApprovalTicket.Issue(actionId, HashA, Now, TimeSpan.FromMinutes(5));
 
         Assert.NotEqual(first.TicketId, second.TicketId);
-        Assert.NotEqual(first.NonceHash, second.NonceHash);
+    }
+
+    [Fact]
+    public void Missing_ticket_is_not_authorized()
+    {
+        var store = new InMemoryApprovalTicketStore();
+        var result = store.Consume(Guid.NewGuid(), Guid.NewGuid(), HashA, Now);
+        Assert.Equal(ApprovalValidation.NotFound, result.Validation);
     }
 }
