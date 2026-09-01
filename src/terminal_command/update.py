@@ -249,14 +249,13 @@ def apply_prepared_release(
     final_release = root / "releases" / target_version
     if final_release.exists():
         raise ValueError(f"Target release already exists: {final_release}")
-    releases = root / "releases"
-    releases.mkdir(parents=True, exist_ok=True)
-    prepared = releases / f".{target_version}.preparing-{uuid.uuid4().hex}"
+    final_release.parent.mkdir(parents=True, exist_ok=True)
     builder = venv_builder or _default_venv_builder
     command_runner = runner or subprocess.run
+    activated = False
     try:
-        builder(prepared)
-        python_exe, app_exe = _release_executables(prepared)
+        builder(final_release)
+        python_exe, app_exe = _release_executables(final_release)
         install = command_runner(
             [str(python_exe), "-m", "pip", "install", "--upgrade", str(source)],
             capture_output=True,
@@ -273,10 +272,10 @@ def apply_prepared_release(
         if getattr(doctor, "returncode", 1) != 0:
             detail = getattr(doctor, "stderr", "") or getattr(doctor, "stdout", "")
             raise RuntimeError(f"Update doctor validation failed: {detail}".strip())
-        os.replace(prepared, final_release)
         create_rollback_state(root, current_version=current_version, target_version=target_version)
         switch_current_version(root, target_version)
+        activated = True
         return target_version
     finally:
-        if prepared.exists():
-            shutil.rmtree(prepared, ignore_errors=True)
+        if not activated and final_release.exists():
+            shutil.rmtree(final_release, ignore_errors=True)
