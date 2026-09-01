@@ -116,20 +116,21 @@ class Router:
     def _deterministic_route(self, raw: str) -> RouteResult | None:
         normalized = " ".join(raw.lower().split())
         builtins = {
-            "show git status": "git.status",
-            "show me git status": "git.status",
-            "what changed in git": "git.status",
-            "show current directory": "system.cwd",
-            "where am i": "system.cwd",
-            "what directory am i in": "system.cwd",
-            "list files": "files.list",
-            "show files": "files.list",
-            "show files here": "files.list",
-            "what files are here": "files.list",
+            "show git status": ("git.status", "nl.git_status"),
+            "show me git status": ("git.status", "nl.git_status"),
+            "what changed in git": ("git.status", "nl.git_status"),
+            "show current directory": ("system.cwd", "nl.pwd"),
+            "where am i": ("system.cwd", "nl.pwd"),
+            "what directory am i in": ("system.cwd", "nl.pwd"),
+            "list files": ("files.list", "nl.list_files"),
+            "show files": ("files.list", "nl.list_files"),
+            "show files here": ("files.list", "nl.list_files"),
+            "what files are here": ("files.list", "nl.list_files"),
         }
-        capability_id = builtins.get(normalized)
-        if capability_id is None:
+        match = builtins.get(normalized)
+        if match is None:
             return None
+        capability_id, rule_id = match
         try:
             action = self.capabilities.invoke(capability_id, {})
         except ValueError:
@@ -139,5 +140,5 @@ class Router:
             source="deterministic",
             action=action,
             confidence=1.0,
-            rule_id=f"nl.{capability_id}",
+            rule_id=rule_id,
         )
