@@ -29,15 +29,16 @@ public sealed class ApprovalTicketTests
     }
 
     [Fact]
-    public void Store_allows_exactly_one_successful_consumption()
+    public async Task Store_allows_exactly_one_successful_consumption()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var actionId = Guid.NewGuid();
         var ticket = ApprovalTicket.Issue(actionId, HashA, Now, TimeSpan.FromMinutes(5));
-        var store = new InMemoryApprovalTicketStore();
-        store.Add(ticket);
+        IApprovalTicketStore store = new InMemoryApprovalTicketStore();
+        await store.AddAsync(ticket, cancellationToken);
 
-        var first = store.Consume(ticket.TicketId, actionId, HashA, Now.AddSeconds(1));
-        var second = store.Consume(ticket.TicketId, actionId, HashA, Now.AddSeconds(2));
+        var first = await store.ConsumeAsync(ticket.TicketId, actionId, HashA, Now.AddSeconds(1), cancellationToken);
+        var second = await store.ConsumeAsync(ticket.TicketId, actionId, HashA, Now.AddSeconds(2), cancellationToken);
 
         Assert.Equal(ApprovalValidation.Valid, first.Validation);
         Assert.NotNull(first.Ticket?.ConsumedAt);
@@ -45,15 +46,16 @@ public sealed class ApprovalTicketTests
     }
 
     [Fact]
-    public void Failed_consumption_does_not_consume_ticket()
+    public async Task Failed_consumption_does_not_consume_ticket()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var actionId = Guid.NewGuid();
         var ticket = ApprovalTicket.Issue(actionId, HashA, Now, TimeSpan.FromMinutes(5));
-        var store = new InMemoryApprovalTicketStore();
-        store.Add(ticket);
+        IApprovalTicketStore store = new InMemoryApprovalTicketStore();
+        await store.AddAsync(ticket, cancellationToken);
 
-        var wrong = store.Consume(ticket.TicketId, Guid.NewGuid(), HashA, Now.AddSeconds(1));
-        var correct = store.Consume(ticket.TicketId, actionId, HashA, Now.AddSeconds(2));
+        var wrong = await store.ConsumeAsync(ticket.TicketId, Guid.NewGuid(), HashA, Now.AddSeconds(1), cancellationToken);
+        var correct = await store.ConsumeAsync(ticket.TicketId, actionId, HashA, Now.AddSeconds(2), cancellationToken);
 
         Assert.Equal(ApprovalValidation.WrongAction, wrong.Validation);
         Assert.Equal(ApprovalValidation.Valid, correct.Validation);
@@ -70,10 +72,11 @@ public sealed class ApprovalTicketTests
     }
 
     [Fact]
-    public void Missing_ticket_is_not_authorized()
+    public async Task Missing_ticket_is_not_authorized()
     {
-        var store = new InMemoryApprovalTicketStore();
-        var result = store.Consume(Guid.NewGuid(), Guid.NewGuid(), HashA, Now);
+        var cancellationToken = TestContext.Current.CancellationToken;
+        IApprovalTicketStore store = new InMemoryApprovalTicketStore();
+        var result = await store.ConsumeAsync(Guid.NewGuid(), Guid.NewGuid(), HashA, Now, cancellationToken);
         Assert.Equal(ApprovalValidation.NotFound, result.Validation);
     }
 }
