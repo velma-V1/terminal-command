@@ -1,8 +1,12 @@
-# Q0–Q32 + Q∞ Maximum-Value Program Admission Review
+# Q0–Q32 + Q∞ Absolute-Value Program Admission Review
 
 This is the **hard architectural admission gate** for Terminal Command.
 
 The target is a **deterministic-first autonomous computer engineering and assurance system** that remains an excellent everyday terminal while being able to inspect, test, attack-test authorized systems, diagnose, repair, update, recover, verify, and maintain software and machines with minimal babysitting. AI is optional reasoning acceleration—not the operating foundation, authority source, or substitute for deterministic structure.
+
+The design goal is not minimum code and not maximum feature count. It is:
+
+> **maximum verified capability and autonomy with the minimum permanent machinery required to achieve it.**
 
 ## Non-negotiable laws
 
@@ -18,8 +22,44 @@ The target is a **deterministic-first autonomous computer engineering and assura
 - **NO FEATURE COUNTS AS HIGH VALUE IF IT DAMAGES DAILY USABILITY.** Heavy assurance machinery stays dormant until needed.
 - **NO BLOAT WITHOUT CAPABILITY GAIN.** Permanent machinery must remove duplicated complexity/risk or add measurable capability unavailable through a simpler composition.
 - **NO CAPABILITY LOSS FOR SIMPLICITY.** Reduce duplication and ceremony—not coverage, proof strength, autonomy, recovery, or useful breadth.
+- **NO SINGLE TOOL GETS TO DEFINE TRUTH.** Independent evidence must challenge important conclusions.
+- **NO AUTOMATION WITHOUT A KNOWN FAILURE BOUNDARY.** Automatic work must know what can go wrong and how that failure is detected.
 
-A failed hard gate means reject, redesign, isolate outside core, or explicitly downgrade the capability claim.
+A failed hard gate means **reject, redesign, isolate outside core, or explicitly downgrade the capability claim**.
+
+---
+
+# Mandatory Tournament Rule
+
+Every proposed component, architecture, dependency, workflow, model, service, or custom subsystem must compete against at least:
+
+1. **Do nothing** — is the capability actually necessary?
+2. **Existing mature primitive** — can the OS/library/tool already solve it better?
+3. **Adapter** — can Terminal Command merely expose that mature primitive safely?
+4. **Composition** — can existing capabilities/workflows produce the same result?
+5. **Deterministic custom mechanism** — is custom structure justified?
+6. **AI-assisted mechanism** — does AI add measurable capability beyond deterministic structure?
+7. **Competing architecture(s)** — what is the strongest credible alternative?
+
+Score each on separate evidence dimensions:
+
+```text
+verified capability
+autonomy gain
+coverage / defect-detection gain
+proof strength
+recovery strength
+daily usefulness
+latency / resource cost
+security / authority risk
+maintenance burden
+failure surface
+replaceability
+```
+
+**Winner rule:** choose the smallest option that preserves the highest verified capability. If a more complex option does not produce a measurable increase in capability, safety, proof, recovery, or autonomy, reject it. If a simpler option reduces those qualities, reject the simplification.
+
+No component enters core merely by winning against a weak alternative. It must win against the **best available alternative**.
 
 ---
 
@@ -95,6 +135,8 @@ Discover and relate, where available:
 - security exposure.
 
 Every fact needs provenance, freshness, and invalidation semantics.
+
+**FAIL if:** planning relies on stale or unproven assumptions about the system.
 
 ## Q6 — Can external changes safely invalidate stale assumptions?
 Files, Git state, packages, processes, DNS, services, environment, remote hosts, or configuration can change outside Terminal Command.
@@ -397,8 +439,24 @@ failure escaped
 
 Q∞ is never retired.
 
+---
+
+# Final Acceptance Rule
+
+Terminal Command is rejected as **not top-tier** if any of the following are true:
+
+- AI is required for routine known operations that deterministic structure could solve.
+- The program cannot automatically test and challenge known systems within authorized scope.
+- A verified repair can regress neighboring behavior without detection.
+- Low-risk reversible verified actions still require unnecessary babysitting.
+- Rollback is claimed but not independently proven.
+- A single detector/oracle can create a global healthy/fixed claim.
+- Capability builders or models can bypass the broker.
+- Heavy machinery slows ordinary daily use when dormant.
+- A subsystem exists mainly because it is interesting rather than because it wins the tournament.
+- Simplification removes useful capability, evidence, autonomy, or recovery.
+- Complexity exists that cannot show a measurable gain against the strongest simpler alternative.
+
 ## Final architectural law
 
-> **Use the smallest architecture capable of the largest verified autonomy: the system understands known state deterministically, plans known work deterministically, executes only exact authorized Actions, contains side effects, reproduces and attacks failures, repairs through evidence, automatically rolls back failed changes, verifies independently, learns reusable proven procedures, and invokes AI only when deterministic knowledge genuinely ends.**
-
-Run this review before locking architecture, after meaningful prototypes reveal new facts, before admitting anything into core, and before production release.
+> **Use the smallest architecture capable of the largest verified autonomy. The system understands known state deterministically, plans known work deterministically, executes only exact authorized Actions, contains side effects, reproduces and attacks failures, repairs through competing candidates, independently verifies outcomes, automatically rolls back failed low-risk changes, continuously turns escaped failures into reusable detection knowledge, and invokes AI only when deterministic knowledge and evidence are insufficient.**
