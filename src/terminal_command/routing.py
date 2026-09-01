@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import shlex
+import shutil
 from typing import Protocol
 
 from .contracts import Action, InputKind, RouteResult
@@ -70,9 +71,11 @@ class Router:
             return None
         if not parts:
             return None
-        first = parts[0].lower()
-        looks_like_path = first.startswith(("./", ".\\", "/"))
-        if first not in _SHELL_COMMANDS and not first.endswith(_SHELL_SUFFIXES) and not looks_like_path:
+        first = parts[0]
+        lowered = first.lower()
+        looks_like_path = lowered.startswith(("./", ".\\", "/"))
+        installed = shutil.which(first) is not None
+        if lowered not in _SHELL_COMMANDS and not lowered.endswith(_SHELL_SUFFIXES) and not looks_like_path and not installed:
             return None
 
         needs_shell = any(operator in raw for operator in _SHELL_OPERATORS)
