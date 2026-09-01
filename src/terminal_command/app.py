@@ -10,6 +10,7 @@ from prompt_toolkit.completion import WordCompleter
 from rich.console import Console
 from rich.panel import Panel
 
+from .capabilities import CapabilityRegistry, default_capabilities
 from .commands import CommandRegistry
 from .contracts import ExecutionResult, PolicyDecision, RouteResult
 from .doctor import DoctorReport, run_doctor
@@ -39,8 +40,10 @@ class AppCore:
         executor: Executor | None = None,
         history: HistoryStore | None = None,
         commands: CommandRegistry | None = None,
+        capabilities: CapabilityRegistry | None = None,
     ):
-        self.router = router or Router()
+        self.capabilities = capabilities or getattr(router, "capabilities", None) or default_capabilities()
+        self.router = router or Router(capabilities=self.capabilities)
         self.policy = policy or PolicyEngine()
         self.executor = executor or Executor()
         self.history = history or HistoryStore(default_history_path())
@@ -88,6 +91,30 @@ class AppCore:
                 outcome = row.get("execution_status") or row.get("error") or row.get("policy_decision")
                 lines.append(f"#{row['id']} {row['request_text']} -> {outcome}")
             return AppOutcome("info", "\n".join(lines), route=route)
+        if command.name == "/capabilities":
+            rows = self.capabilities.describe()
+            if not rows:
+                return AppOutcome("info", "No capabilities registered.", route=route)
+            return AppOutcome(
+                "info",
+                "\n".join(f"{row['id']:<24} {row['description']}" for row in rows),
+                route=route,
+            )
+        if command.name == "/explain":
+            parts = text.strip().split(maxsplit=1)
+            if len(parts) == 1 or not parts[1].strip():
+                return AppOutcome("info", "Usage: /explain <request>", route=route)
+            proposed = self.router.route(parts[1])
+            if proposed.action is None:
+                return AppOutcome("info", f"source={proposed.source} unresolved", route=route)
+            policy = self.policy.evaluate(proposed.action)
+            capability_id = proposed.action.metadata.get("capability_id", "-")
+            preview = proposed.action.metadata.get("raw_command") or " ".join(proposed.action.command)
+            message = (
+                f"source={proposed.source} rule={proposed.rule_id or '-'} capability={capability_id} "
+                f"policy={policy.decision.value} risk={policy.risk.value} command={preview}"
+            )
+            return AppOutcome("info", message, route=route)
         return AppOutcome("unknown_command", f"Unhandled command: {command.name}", route=route)
 
 
@@ -143,8 +170,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     history = HistoryStore(Path(args.history_db).expanduser()) if args.history_db else HistoryStore(default_history_path())
-    model_router = None if args.no_model else OllamaRouter(model=args.model)
-    app = AppCore(router=Router(model_router=model_router), history=history)
+    capabilities = default_capabilities()
+    model_router = None if args.no_model else OllamaRouter(model=args.model, registry=capabilities)
+    app = AppCore(
+        router=Router(model_router=model_router, capabilities=capabilities),
+        history=history,
+        capabilities=capabilities,
+    )
 
     console.print(Panel.fit("TERMINAL COMMAND\nNatural language • shell • /commands", border_style="cyan"))
     registry = app.commands

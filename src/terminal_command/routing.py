@@ -5,6 +5,7 @@ import shlex
 import shutil
 from typing import Protocol
 
+from .capabilities import CapabilityRegistry, default_capabilities
 from .contracts import Action, InputKind, RouteResult
 
 
@@ -24,8 +25,13 @@ _SHELL_OPERATORS = ("|", ">", "<", "&&", "||", ";")
 
 
 class Router:
-    def __init__(self, model_router: ModelRouterLike | None = None):
+    def __init__(
+        self,
+        model_router: ModelRouterLike | None = None,
+        capabilities: CapabilityRegistry | None = None,
+    ):
         self.model_router = model_router
+        self.capabilities = capabilities or default_capabilities()
 
     def route(self, text: str) -> RouteResult:
         raw = text.strip()
@@ -46,6 +52,21 @@ class Router:
         if deterministic:
             return deterministic
 
+        capability_id = self.capabilities.resolve_id(raw)
+        if capability_id is not None:
+            try:
+                action = self.capabilities.invoke(capability_id, {})
+            except ValueError:
+                action = None
+            if action is not None:
+                return RouteResult(
+                    input_kind=InputKind.NATURAL_LANGUAGE,
+                    source="capability_alias",
+                    action=action,
+                    confidence=1.0,
+                    rule_id=f"capability:{capability_id}",
+                )
+
         shell = self._shell_route(raw)
         if shell:
             return shell
@@ -61,7 +82,7 @@ class Router:
         return RouteResult(
             input_kind=InputKind.UNRESOLVED,
             source="unresolved",
-            explanation="No safe deterministic or model route was available.",
+            explanation="No safe deterministic, capability, shell, or model route was available.",
         )
 
     def _shell_route(self, raw: str) -> RouteResult | None:
@@ -94,22 +115,29 @@ class Router:
 
     def _deterministic_route(self, raw: str) -> RouteResult | None:
         normalized = " ".join(raw.lower().split())
-        if normalized in {"show git status", "show me git status", "what changed in git"}:
-            return self._nl("nl.git_status", "git_status", ["git", "status"])
-        if normalized in {"show current directory", "where am i", "what directory am i in"}:
-            command = ["cmd", "/c", "cd"] if os.name == "nt" else ["pwd"]
-            return self._nl("nl.pwd", "current_directory", command)
-        if normalized in {"list files", "show files", "show files here", "what files are here"}:
-            command = ["cmd", "/c", "dir"] if os.name == "nt" else ["ls", "-la"]
-            return self._nl("nl.list_files", "list_files", command)
-        return None
-
-    @staticmethod
-    def _nl(rule_id: str, name: str, command: list[str]) -> RouteResult:
+        builtins = {
+            "show git status": "git.status",
+            "show me git status": "git.status",
+            "what changed in git": "git.status",
+            "show current directory": "system.cwd",
+            "where am i": "system.cwd",
+            "what directory am i in": "system.cwd",
+            "list files": "files.list",
+            "show files": "files.list",
+            "show files here": "files.list",
+            "what files are here": "files.list",
+        }
+        capability_id = builtins.get(normalized)
+        if capability_id is None:
+            return None
+        try:
+            action = self.capabilities.invoke(capability_id, {})
+        except ValueError:
+            return None
         return RouteResult(
             input_kind=InputKind.NATURAL_LANGUAGE,
             source="deterministic",
-            action=Action(name=name, command=command, metadata={"rule_id": rule_id}),
+            action=action,
             confidence=1.0,
-            rule_id=rule_id,
+            rule_id=f"nl.{capability_id}",
         )
