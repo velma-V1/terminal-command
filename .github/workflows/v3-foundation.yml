@@ -51,4 +51,4 @@ jobs:
       - name: Build
         run: dotnet build Terminal.slnx --configuration Release --no-restore -p:ContinuousIntegrationBuild=true
       - name: Test authority, protocol, lifecycle, and fault matrix
-        run: dotnet test Terminal.slnx --configuration Release --no-build --logger "console;verbosity=normal"
+        run: dotnet test Terminal.slnx --configuration Release --no-build

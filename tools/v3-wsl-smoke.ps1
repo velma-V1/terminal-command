@@ -33,9 +33,9 @@ try {
     $env:TERMINAL_WSL_DISTRO = $Distro
     $env:TERMINAL_WSL_AGENT = $remote
 
+    # Run the full Windows lifecycle suite; the real WSL test becomes active through the environment gate.
     & dotnet test (Join-Path $root "tests\Terminal.Windows.Tests\Terminal.Windows.Tests.csproj") `
-        --configuration Release `
-        --filter "FullyQualifiedName~RealWslIntegrationTests"
+        --configuration Release
     if ($LASTEXITCODE -ne 0) { throw "Real WSL transport smoke test failed." }
 }
 finally {
