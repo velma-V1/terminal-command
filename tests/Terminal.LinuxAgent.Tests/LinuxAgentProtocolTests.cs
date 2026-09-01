@@ -8,7 +8,7 @@ namespace Terminal.LinuxAgent.Tests;
 public sealed class LinuxAgentProtocolTests
 {
     [Fact]
-    public async Task Hello_and_health_are_supported_but_action_execution_is_disabled()
+    public async Task Hello_health_and_heartbeat_are_supported_but_action_execution_is_disabled()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var handler = new LinuxAgentProtocolHandler();
@@ -31,6 +31,12 @@ public sealed class LinuxAgentProtocolTests
             Frame(ProtocolMessageType.Health, new HealthRequest()),
             cancellationToken);
         Assert.True(HealthResponse.Parser.ParseFrom(health.Payload.Span).Healthy);
+
+        var heartbeat = await handler.HandleAsync(
+            Frame(ProtocolMessageType.Heartbeat, new HealthRequest()),
+            cancellationToken);
+        Assert.Equal(ProtocolMessageType.Heartbeat, heartbeat.Header.MessageType);
+        Assert.True(HealthResponse.Parser.ParseFrom(heartbeat.Payload.Span).Healthy);
 
         var denied = await handler.HandleAsync(
             new ProtocolFrame(
@@ -57,6 +63,7 @@ public sealed class LinuxAgentProtocolTests
                 Client = "test"
             }), cancellationToken);
         await FrameStream.WriteAsync(input, Frame(ProtocolMessageType.Health, new HealthRequest()), cancellationToken);
+        await FrameStream.WriteAsync(input, Frame(ProtocolMessageType.Heartbeat, new HealthRequest()), cancellationToken);
         input.Position = 0;
         await using var output = new MemoryStream();
         var host = new StdioAgentHost(input, output, new LinuxAgentProtocolHandler());
@@ -66,6 +73,7 @@ public sealed class LinuxAgentProtocolTests
 
         Assert.Equal(ProtocolMessageType.Hello, (await FrameStream.ReadAsync(output, cancellationToken))!.Header.MessageType);
         Assert.Equal(ProtocolMessageType.Health, (await FrameStream.ReadAsync(output, cancellationToken))!.Header.MessageType);
+        Assert.Equal(ProtocolMessageType.Heartbeat, (await FrameStream.ReadAsync(output, cancellationToken))!.Header.MessageType);
         Assert.Null(await FrameStream.ReadAsync(output, cancellationToken));
     }
 
