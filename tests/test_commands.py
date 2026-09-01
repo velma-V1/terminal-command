@@ -11,6 +11,7 @@ def test_default_registry_contains_core_commands():
         "/explain",
         "/help",
         "/history",
+        "/jobs",
         "/project",
         "/workflow",
     ]
