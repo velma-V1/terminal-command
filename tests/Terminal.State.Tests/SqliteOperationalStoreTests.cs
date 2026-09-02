@@ -8,7 +8,7 @@ public sealed class SqliteOperationalStoreTests : IDisposable
     private readonly string _directory = Path.Combine(Path.GetTempPath(), "terminal-v3-state", Guid.NewGuid().ToString("N"));
 
     [Fact]
-    public async Task Initialize_is_idempotent_and_creates_schema_v1()
+    public async Task Initialize_is_idempotent_and_creates_schema_v2()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         Directory.CreateDirectory(_directory);
@@ -18,7 +18,7 @@ public sealed class SqliteOperationalStoreTests : IDisposable
         await store.InitializeAsync(cancellationToken);
         await store.InitializeAsync(cancellationToken);
 
-        Assert.Equal(1, await store.GetSchemaVersionAsync(cancellationToken));
+        Assert.Equal(2, await store.GetSchemaVersionAsync(cancellationToken));
         var tables = await store.ListUserTablesAsync(cancellationToken);
         Assert.Contains("actions", tables);
         Assert.Contains("approval_tickets", tables);
@@ -26,6 +26,53 @@ public sealed class SqliteOperationalStoreTests : IDisposable
         Assert.Contains("transaction_events", tables);
         Assert.Contains("executions", tables);
         Assert.Contains("verification_results", tables);
+        Assert.Contains("system_facts", tables);
+        Assert.Contains("system_fact_dependencies", tables);
+        Assert.Contains("learned_knowledge", tables);
+        Assert.Contains("learned_knowledge_evidence", tables);
+    }
+
+    [Fact]
+    public async Task Existing_schema_v1_is_migrated_without_losing_operational_data()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        Directory.CreateDirectory(_directory);
+        var path = Path.Combine(_directory, "terminal-v1.db");
+
+        await using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            await connection.OpenAsync(cancellationToken);
+            var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE schema_info (
+                    singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+                    version INTEGER NOT NULL CHECK (version > 0)
+                ) STRICT;
+                INSERT INTO schema_info(singleton, version) VALUES (1, 1);
+                CREATE TABLE actions (
+                    action_id TEXT PRIMARY KEY NOT NULL,
+                    action_hash TEXT NOT NULL CHECK (length(action_hash) = 64),
+                    canonical_json TEXT NOT NULL,
+                    created_at_utc TEXT NOT NULL
+                ) STRICT;
+                INSERT INTO actions(action_id, action_hash, canonical_json, created_at_utc)
+                VALUES ('action-preserved', printf('%064d', 0), '{}', '2026-09-01T00:00:00+00:00');
+                """;
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+
+        await using var store = new SqliteOperationalStore(path);
+        await store.InitializeAsync(cancellationToken);
+
+        Assert.Equal(2, await store.GetSchemaVersionAsync(cancellationToken));
+        await using var migrated = await store.OpenConnectionAsync(cancellationToken);
+        Assert.Equal(1L, await ScalarInt64Async(
+            migrated,
+            "SELECT COUNT(*) FROM actions WHERE action_id = 'action-preserved';",
+            cancellationToken));
+        var tables = await store.ListUserTablesAsync(cancellationToken);
+        Assert.Contains("system_facts", tables);
+        Assert.Contains("learned_knowledge", tables);
     }
 
     [Fact]
@@ -79,7 +126,7 @@ public sealed class SqliteOperationalStoreTests : IDisposable
 
         await using var second = new SqliteOperationalStore(path);
         await second.InitializeAsync(cancellationToken);
-        Assert.Equal(1, await second.GetSchemaVersionAsync(cancellationToken));
+        Assert.Equal(2, await second.GetSchemaVersionAsync(cancellationToken));
     }
 
     public void Dispose()
