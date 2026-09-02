@@ -391,7 +391,7 @@ public sealed class LinuxPtySessionHost : ITerminalSessionHost
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        private struct WinSize
+        public struct WinSize
         {
             public ushort Rows;
             public ushort Columns;
