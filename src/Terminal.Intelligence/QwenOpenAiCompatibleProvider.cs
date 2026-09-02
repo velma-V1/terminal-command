@@ -289,7 +289,7 @@ public sealed class QwenOpenAiCompatibleProvider : IModelProvider
     }
 
     private static Uri EnsureTrailingSlash(Uri value)
-        => value.AbsoluteUri.EndsWith('/', StringComparison.Ordinal)
+        => value.AbsoluteUri.EndsWith("/", StringComparison.Ordinal)
             ? value
             : new Uri(value.AbsoluteUri + "/", UriKind.Absolute);
 
