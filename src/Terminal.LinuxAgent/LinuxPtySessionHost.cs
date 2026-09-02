@@ -53,6 +53,7 @@ public sealed class LinuxPtySessionHost : ITerminalSessionHost
         try
         {
             var slave = await OpenChildPtySlaveAsync(process, cancellationToken).ConfigureAwait(false);
+            await ReleaseStartupBarrierAsync(process, cancellationToken).ConfigureAwait(false);
             return new LinuxPtySession(request.SessionId, process, slave, stderrDrain);
         }
         catch
@@ -77,7 +78,8 @@ public sealed class LinuxPtySessionHost : ITerminalSessionHost
         var action = request.Action;
         var dimensions = request.InitialDimensions;
         var command = new StringBuilder();
-        command.Append(ShellQuote(stty))
+        command.Append("IFS= read -r _terminal_gate || exit 125; ")
+            .Append(ShellQuote(stty))
             .Append(" rows ")
             .Append(dimensions.Rows)
             .Append(" cols ")
@@ -121,6 +123,18 @@ public sealed class LinuxPtySessionHost : ITerminalSessionHost
         }
 
         return startInfo;
+    }
+
+    private static async ValueTask ReleaseStartupBarrierAsync(
+        Process process,
+        CancellationToken cancellationToken)
+    {
+        await process.StandardInput.BaseStream
+            .WriteAsync(new byte[] { (byte)'\n' }, cancellationToken)
+            .ConfigureAwait(false);
+        await process.StandardInput.BaseStream
+            .FlushAsync(cancellationToken)
+            .ConfigureAwait(false);
     }
 
     private static async ValueTask<SafeLinuxFd> OpenChildPtySlaveAsync(
