@@ -2,7 +2,7 @@ name: V1 Foundation
 
 on:
   push:
-    branches: [feat/v1-unified-terminal]
+    branches: [main]
     paths:
       - 'src/Terminal.*/**'
       - 'tests/Terminal.*/**'
