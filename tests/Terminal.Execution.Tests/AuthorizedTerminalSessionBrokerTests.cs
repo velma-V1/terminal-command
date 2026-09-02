@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Terminal.Core.Actions;
 using Terminal.Core.Authority;
 using Terminal.Core.Evidence;
@@ -287,8 +288,9 @@ public sealed class AuthorizedTerminalSessionBrokerTests
         }
 
         public async IAsyncEnumerable<ReadOnlyMemory<byte>> ReadOutputAsync(
-            CancellationToken cancellationToken = default)
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             await Task.CompletedTask;
             yield break;
         }
