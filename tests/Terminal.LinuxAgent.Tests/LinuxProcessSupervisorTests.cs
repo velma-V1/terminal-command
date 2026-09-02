@@ -1,5 +1,6 @@
 using System.Text;
 using Terminal.Core.Actions;
+using Terminal.Core.Evidence;
 using Terminal.Execution;
 using Terminal.LinuxAgent;
 
@@ -12,10 +13,7 @@ public sealed class LinuxProcessSupervisorTests
     {
         if (!OperatingSystem.IsLinux()) return;
         var cancellationToken = TestContext.Current.CancellationToken;
-        var action = CreateAction(
-            "/bin/sh",
-            ["-c", "printf '%*s' 200000 '' | tr ' ' x"],
-            Environment.CurrentDirectory);
+        var action = CreateAction("/bin/sh", ["-c", "printf '%*s' 200000 '' | tr ' ' x"], Environment.CurrentDirectory);
         var supervisor = new LinuxProcessSupervisor(maxCaptureBytes: 4096);
 
         var result = await supervisor.ExecuteAsync(Request(action), cancellationToken);
@@ -38,11 +36,7 @@ public sealed class LinuxProcessSupervisorTests
         try
         {
             var escaped = marker.Replace("'", "'\"'\"'", StringComparison.Ordinal);
-            var action = CreateAction(
-                "/bin/sh",
-                ["-c", $"(sleep 2; printf escaped > '{escaped}') & sleep 30"],
-                directory.FullName,
-                timeout: TimeSpan.FromMilliseconds(400));
+            var action = CreateAction("/bin/sh", ["-c", $"(sleep 2; printf escaped > '{escaped}') & sleep 30"], directory.FullName, timeout: TimeSpan.FromMilliseconds(400));
             var supervisor = new LinuxProcessSupervisor(maxCaptureBytes: 8192);
 
             var result = await supervisor.ExecuteAsync(Request(action), cancellationToken);
@@ -94,21 +88,25 @@ public sealed class LinuxProcessSupervisorTests
         string workingDirectory,
         IReadOnlyDictionary<string, string?>? environment = null,
         TimeSpan? timeout = null)
-        => new(
+    {
+        var now = DateTimeOffset.UtcNow;
+        var processIdentity = $"process:{Guid.NewGuid():N}";
+        return new TerminalAction(
             Guid.NewGuid(),
             "test",
             "test.linux",
             operation,
             arguments,
             ActionBackend.Wsl,
-            workingDirectory,
+            new ResourceRef(ResourceEnvironment.Wsl, ResourceKind.Directory, workingDirectory, workingDirectory, $"dir:{workingDirectory}", "wsl", null, now, RevalidationMethod.DirectoryIdentity),
             environment ?? new Dictionary<string, string?>(),
-            $"process:{Guid.NewGuid():N}",
-            new Dictionary<string, string> { ["process"] = "test" },
+            [new ResourceRef(ResourceEnvironment.Wsl, ResourceKind.Process, processIdentity, processIdentity, processIdentity, "wsl", null, now, RevalidationMethod.ProcessIdentity)],
+            new ScopeContract([new ScopeEntry(ScopeDimension.Process, "test")]),
             timeout ?? TimeSpan.FromSeconds(10),
             512L * 1024 * 1024,
             MutationClass.Ephemeral,
             RecoveryClass.None,
-            "test",
-            DateTimeOffset.UtcNow);
+            new Provenance(ProvenanceSourceType.System, "test", TrustClass.TrustedLocal, now, "test:linux", []),
+            now);
+    }
 }
