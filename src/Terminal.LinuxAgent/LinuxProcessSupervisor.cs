@@ -71,28 +71,18 @@ public sealed class LinuxProcessSupervisor : IProcessSupervisor
             return Failed(request.ExecutionId, exception.Message);
         }
 
-        var stdoutTask = StreamCapture.CaptureAsync(
-            process.StandardOutput.BaseStream,
-            _maxCaptureBytes,
-            CancellationToken.None).AsTask();
-        var stderrTask = StreamCapture.CaptureAsync(
-            process.StandardError.BaseStream,
-            _maxCaptureBytes,
-            CancellationToken.None).AsTask();
+        var stdoutTask = StreamCapture.CaptureAsync(process.StandardOutput.BaseStream, _maxCaptureBytes, CancellationToken.None).AsTask();
+        var stderrTask = StreamCapture.CaptureAsync(process.StandardError.BaseStream, _maxCaptureBytes, CancellationToken.None).AsTask();
 
         var exitTask = process.WaitForExitAsync(CancellationToken.None);
-        var timeoutTask = action.Timeout is { } timeout
-            ? Task.Delay(timeout)
-            : Task.Delay(Timeout.InfiniteTimeSpan);
+        var timeoutTask = action.Timeout is { } timeout ? Task.Delay(timeout) : Task.Delay(Timeout.InfiniteTimeSpan);
         var cancellationTask = Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
         var completed = await Task.WhenAny(exitTask, timeoutTask, cancellationTask).ConfigureAwait(false);
 
         var status = ProcessExecutionStatus.Exited;
         if (completed != exitTask)
         {
-            status = cancellationToken.IsCancellationRequested
-                ? ProcessExecutionStatus.Cancelled
-                : ProcessExecutionStatus.TimedOut;
+            status = cancellationToken.IsCancellationRequested ? ProcessExecutionStatus.Cancelled : ProcessExecutionStatus.TimedOut;
 
             if (containment == ProcessContainmentBoundary.LinuxCgroupV2)
             {
@@ -112,13 +102,7 @@ public sealed class LinuxProcessSupervisor : IProcessSupervisor
         var exitCode = process.ExitCode;
         cgroup?.Dispose();
 
-        return new ProcessExecutionResult(
-            request.ExecutionId,
-            status,
-            exitCode,
-            stdout,
-            stderr,
-            metrics);
+        return new ProcessExecutionResult(request.ExecutionId, status, exitCode, stdout, stderr, metrics);
     }
 
     private static ProcessStartInfo BuildCgroupStartInfo(TerminalAction action, string cgroupPath)
@@ -166,7 +150,7 @@ public sealed class LinuxProcessSupervisor : IProcessSupervisor
             RedirectStandardError = true,
             RedirectStandardInput = false,
             CreateNoWindow = true,
-            WorkingDirectory = action.WorkingDirectory
+            WorkingDirectory = action.WorkingDirectory.CanonicalIdentity
         };
 
         foreach (var (key, value) in action.EnvironmentDelta)
@@ -184,17 +168,11 @@ public sealed class LinuxProcessSupervisor : IProcessSupervisor
         return info;
     }
 
-    private static ProcessExecutionMetrics ReadMetrics(
-        Process process,
-        ProcessContainmentBoundary containment)
+    private static ProcessExecutionMetrics ReadMetrics(Process process, ProcessContainmentBoundary containment)
     {
         try
         {
-            return new ProcessExecutionMetrics(
-                containment,
-                process.PeakWorkingSet64,
-                process.UserProcessorTime,
-                process.PrivilegedProcessorTime);
+            return new ProcessExecutionMetrics(containment, process.PeakWorkingSet64, process.UserProcessorTime, process.PrivilegedProcessorTime);
         }
         catch (InvalidOperationException)
         {
@@ -203,12 +181,7 @@ public sealed class LinuxProcessSupervisor : IProcessSupervisor
     }
 
     private static ProcessExecutionResult Failed(Guid executionId, string message)
-        => new(
-            executionId,
-            ProcessExecutionStatus.FailedToStart,
-            exitCode: null,
-            metrics: new ProcessExecutionMetrics(ProcessContainmentBoundary.None),
-            errorMessage: message);
+        => new(executionId, ProcessExecutionStatus.FailedToStart, exitCode: null, metrics: new ProcessExecutionMetrics(ProcessContainmentBoundary.None), errorMessage: message);
 
     private static void KillProcessGroup(int processGroupId)
     {
@@ -236,14 +209,12 @@ public sealed class LinuxProcessSupervisor : IProcessSupervisor
         public static CgroupV2Lease? TryCreate(Guid executionId, long? memoryLimitBytes)
         {
             const string root = "/sys/fs/cgroup";
-            if (!File.Exists(System.IO.Path.Combine(root, "cgroup.controllers")) ||
-                !File.Exists("/proc/self/cgroup"))
+            if (!File.Exists(System.IO.Path.Combine(root, "cgroup.controllers")) || !File.Exists("/proc/self/cgroup"))
             {
                 return null;
             }
 
-            var unified = File.ReadLines("/proc/self/cgroup")
-                .FirstOrDefault(static line => line.StartsWith("0::", StringComparison.Ordinal));
+            var unified = File.ReadLines("/proc/self/cgroup").FirstOrDefault(static line => line.StartsWith("0::", StringComparison.Ordinal));
             if (unified is null)
             {
                 return null;
@@ -252,8 +223,7 @@ public sealed class LinuxProcessSupervisor : IProcessSupervisor
             var relative = unified[3..].TrimStart('/');
             var current = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, relative));
             var normalizedRoot = System.IO.Path.GetFullPath(root) + System.IO.Path.DirectorySeparatorChar;
-            if (!current.StartsWith(normalizedRoot, StringComparison.Ordinal) &&
-                !string.Equals(current, System.IO.Path.GetFullPath(root), StringComparison.Ordinal))
+            if (!current.StartsWith(normalizedRoot, StringComparison.Ordinal) && !string.Equals(current, System.IO.Path.GetFullPath(root), StringComparison.Ordinal))
             {
                 return null;
             }
