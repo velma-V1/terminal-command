@@ -11,7 +11,9 @@ public enum EvidenceKind
     PerformanceObservation,
     ArtifactEvidence,
     VerificationResult,
-    ToolOutput
+    ToolOutput,
+    ModelContext,
+    ModelCandidate
 }
 
 public sealed record NormalizedEvidence(
