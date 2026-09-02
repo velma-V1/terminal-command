@@ -42,6 +42,7 @@ public sealed class WindowsConPtySessionHost : ITerminalSessionHost
         private const uint CreateSuspended = 0x00000004;
         private const uint CreateUnicodeEnvironment = 0x00000400;
         private const uint ExtendedStartupInfoPresent = 0x00080000;
+        private const uint StartfUseStdHandles = 0x00000100;
         private static readonly IntPtr ProcThreadAttributePseudoConsole = new(0x00020016);
         private readonly FileStream _input;
         private readonly FileStream _output;
@@ -120,7 +121,11 @@ public sealed class WindowsConPtySessionHost : ITerminalSessionHost
                 {
                     StartupInfo = new StartupInfo
                     {
-                        cb = Marshal.SizeOf<StartupInfoEx>()
+                        cb = Marshal.SizeOf<StartupInfoEx>(),
+                        dwFlags = StartfUseStdHandles,
+                        hStdInput = IntPtr.Zero,
+                        hStdOutput = IntPtr.Zero,
+                        hStdError = IntPtr.Zero
                     },
                     lpAttributeList = attributeList
                 };
