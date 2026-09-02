@@ -170,7 +170,15 @@ public sealed class WslTransport : IAsyncDisposable
         }
     }
 
-    public async ValueTask<HealthResponse> HealthAsync(CancellationToken cancellationToken = default)
+    public ValueTask<HealthResponse> HealthAsync(CancellationToken cancellationToken = default)
+        => ProbeAsync(ProtocolMessageType.Health, cancellationToken);
+
+    public ValueTask<HealthResponse> HeartbeatAsync(CancellationToken cancellationToken = default)
+        => ProbeAsync(ProtocolMessageType.Heartbeat, cancellationToken);
+
+    private async ValueTask<HealthResponse> ProbeAsync(
+        ProtocolMessageType type,
+        CancellationToken cancellationToken)
     {
         ThrowIfDisposed();
         if (!IsAvailable)
@@ -181,7 +189,7 @@ public sealed class WslTransport : IAsyncDisposable
         try
         {
             var response = await RequestAsync(
-                ProtocolMessageType.Health,
+                type,
                 new HealthRequest(),
                 HealthResponse.Parser,
                 cancellationToken).ConfigureAwait(false);
@@ -222,6 +230,12 @@ public sealed class WslTransport : IAsyncDisposable
 
             var response = await FrameStream.ReadAsync(_process.StandardOutput, timeout.Token).ConfigureAwait(false)
                 ?? throw new EndOfStreamException("Linux agent closed the protocol stream without a response.");
+
+            if (response.Header.RequestId != requestId)
+            {
+                throw new InvalidDataException("Linux agent response request ID does not match the active request.");
+            }
+
             if (response.Header.MessageType == ProtocolMessageType.Error)
             {
                 var error = ErrorResponse.Parser.ParseFrom(response.Payload.Span);
