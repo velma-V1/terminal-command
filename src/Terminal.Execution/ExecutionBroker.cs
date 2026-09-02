@@ -1,6 +1,5 @@
 using Terminal.Core.Actions;
 using Terminal.Core.Authority;
-using Terminal.Core.Transactions;
 
 namespace Terminal.Execution;
 
@@ -140,23 +139,21 @@ public sealed record ExecutionBrokerResult(
 public sealed class ExecutionBroker : IExecutionBroker
 {
     private readonly IProcessSupervisor _supervisor;
-    private readonly IApprovalTicketStore _approvalTickets;
-    private readonly ITransactionJournal _journal;
-    private readonly ITargetEvidenceResolver _targetEvidenceResolver;
-    private readonly TimeProvider _timeProvider;
+    private readonly ExecutionAdmissionGate _admissionGate;
 
     public ExecutionBroker(
         IProcessSupervisor supervisor,
         IApprovalTicketStore approvalTickets,
-        ITransactionJournal journal,
+        Terminal.Core.Transactions.ITransactionJournal journal,
         ITargetEvidenceResolver targetEvidenceResolver,
         TimeProvider timeProvider)
     {
         _supervisor = supervisor ?? throw new ArgumentNullException(nameof(supervisor));
-        _approvalTickets = approvalTickets ?? throw new ArgumentNullException(nameof(approvalTickets));
-        _journal = journal ?? throw new ArgumentNullException(nameof(journal));
-        _targetEvidenceResolver = targetEvidenceResolver ?? throw new ArgumentNullException(nameof(targetEvidenceResolver));
-        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        _admissionGate = new ExecutionAdmissionGate(
+            approvalTickets,
+            journal,
+            targetEvidenceResolver,
+            timeProvider);
     }
 
     public async ValueTask<ExecutionBrokerResult> ExecuteAsync(
@@ -167,76 +164,14 @@ public sealed class ExecutionBroker : IExecutionBroker
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(authorization);
 
-        if (!authorization.MatchesAction(action))
-        {
-            return ExecutionBrokerResult.Reject(ExecutionBrokerRejection.ActionMismatch);
-        }
-
-        var currentTargetEvidence = await _targetEvidenceResolver
-            .RevalidateAsync(action, cancellationToken)
+        var admission = await _admissionGate
+            .AdmitAsync(action, authorization, cancellationToken)
             .ConfigureAwait(false);
-        if (!authorization.MatchesTarget(currentTargetEvidence))
+        if (!admission.Accepted)
         {
-            return ExecutionBrokerResult.Reject(ExecutionBrokerRejection.TargetEvidenceMismatch);
-        }
-
-        var transaction = await _journal
-            .GetAsync(authorization.TransactionId, cancellationToken)
-            .ConfigureAwait(false);
-        if (transaction is not { } currentTransaction ||
-            currentTransaction.ActionId != action.ActionId ||
-            currentTransaction.State != TransactionState.Authorized)
-        {
-            return ExecutionBrokerResult.Reject(ExecutionBrokerRejection.TransactionNotAuthorized);
-        }
-
-        ApprovalValidation? approvalValidation = null;
-        switch (authorization.PolicyKind)
-        {
-            case PolicyDecisionKind.AllowAuto:
-                break;
-
-            case PolicyDecisionKind.RequireApproval:
-                if (authorization.ApprovalTicketId is not { } ticketId)
-                {
-                    return ExecutionBrokerResult.Reject(ExecutionBrokerRejection.ApprovalInvalid);
-                }
-
-                var approval = await _approvalTickets
-                    .ConsumeAsync(
-                        ticketId,
-                        authorization.ActionId,
-                        authorization.ActionHash,
-                        _timeProvider.GetUtcNow(),
-                        cancellationToken)
-                    .ConfigureAwait(false);
-                approvalValidation = approval.Validation;
-                if (approval.Validation != ApprovalValidation.Valid)
-                {
-                    return ExecutionBrokerResult.Reject(
-                        ExecutionBrokerRejection.ApprovalInvalid,
-                        approval.Validation);
-                }
-
-                break;
-
-            default:
-                return ExecutionBrokerResult.Reject(ExecutionBrokerRejection.UnsupportedPolicy);
-        }
-
-        try
-        {
-            await _journal
-                .TransitionAsync(
-                    authorization.TransactionId,
-                    TransactionState.Started,
-                    _timeProvider.GetUtcNow(),
-                    cancellationToken)
-                .ConfigureAwait(false);
-        }
-        catch (InvalidOperationException)
-        {
-            return ExecutionBrokerResult.Reject(ExecutionBrokerRejection.TransactionNotAuthorized, approvalValidation);
+            return ExecutionBrokerResult.Reject(
+                admission.Rejection,
+                admission.ApprovalValidation);
         }
 
         var request = new ProcessExecutionRequest(
@@ -247,7 +182,7 @@ public sealed class ExecutionBroker : IExecutionBroker
             .ExecuteAsync(request, cancellationToken)
             .ConfigureAwait(false);
 
-        return ExecutionBrokerResult.Executed(result, approvalValidation);
+        return ExecutionBrokerResult.Executed(result, admission.ApprovalValidation);
     }
 }
 
