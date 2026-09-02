@@ -103,7 +103,7 @@ public sealed class WindowsJobObjectSupervisor : IProcessSupervisor
                     true,
                     flags,
                     environmentBlock,
-                    action.WorkingDirectory,
+                    action.WorkingDirectory.CanonicalIdentity,
                     ref startup,
                     out var processInformation))
             {
