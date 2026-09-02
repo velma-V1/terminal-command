@@ -80,8 +80,14 @@ public sealed class SqliteLearningStateTests : IDisposable
         var found = await store.FindByTriggerAsync(knowledge.TriggerSignature, cancellationToken);
 
         var restored = Assert.Single(found);
-        Assert.Equal(knowledge, restored);
-        Assert.Equal(2, restored.Evidence.Count);
+        Assert.Equal(knowledge.KnowledgeId, restored.KnowledgeId);
+        Assert.Equal(knowledge.Kind, restored.Kind);
+        Assert.Equal(knowledge.TriggerSignature, restored.TriggerSignature);
+        Assert.Equal(knowledge.Content, restored.Content);
+        Assert.Equal(knowledge.SourceCandidateId, restored.SourceCandidateId);
+        Assert.Equal(knowledge.TrustClass, restored.TrustClass);
+        Assert.Equal(knowledge.PromotedAt, restored.PromotedAt);
+        Assert.Equal(knowledge.Evidence, restored.Evidence);
     }
 
     [Fact]
