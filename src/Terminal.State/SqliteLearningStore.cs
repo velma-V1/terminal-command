@@ -5,7 +5,7 @@ using Terminal.Core.Recovery;
 
 namespace Terminal.State;
 
-public sealed class SqliteLearningStore
+public sealed class SqliteLearningStore : IVerifiedKnowledgeStore
 {
     private readonly SqliteOperationalStore _operationalStore;
 
