@@ -1,12 +1,13 @@
 using System.Buffers;
 using System.Text;
 using System.Text.Json;
+using Terminal.Core.Evidence;
 
 namespace Terminal.Core.Actions;
 
 public static class ActionCanonicalizer
 {
-    private const int SchemaVersion = 1;
+    private const int SchemaVersion = 2;
 
     public static string Canonicalize(TerminalAction action)
     {
@@ -28,17 +29,10 @@ public static class ActionCanonicalizer
         }
 
         writer.WriteString("operation", action.Operation);
-
-        writer.WritePropertyName("arguments");
-        writer.WriteStartArray();
-        foreach (var argument in action.Arguments)
-        {
-            writer.WriteStringValue(argument);
-        }
-        writer.WriteEndArray();
-
+        WriteStrings(writer, "arguments", action.Arguments);
         writer.WriteString("backend", action.Backend.ToString());
-        writer.WriteString("workingDirectory", action.WorkingDirectory);
+        writer.WritePropertyName("workingDirectory");
+        WriteResource(writer, action.WorkingDirectory);
 
         writer.WritePropertyName("environmentDelta");
         writer.WriteStartObject();
@@ -55,40 +49,116 @@ public static class ActionCanonicalizer
         }
         writer.WriteEndObject();
 
-        writer.WriteString("targetIdentity", action.TargetIdentity);
+        writer.WritePropertyName("targets");
+        writer.WriteStartArray();
+        foreach (var target in action.Targets.OrderBy(ResourceSortKey, StringComparer.Ordinal))
+        {
+            WriteResource(writer, target);
+        }
+        writer.WriteEndArray();
 
         writer.WritePropertyName("scope");
         writer.WriteStartObject();
-        foreach (var pair in action.Scope.OrderBy(static pair => pair.Key, StringComparer.Ordinal))
-        {
-            writer.WriteString(pair.Key, pair.Value);
-        }
+        WriteStrings(writer, "entries", action.Scope.CanonicalEntries);
+        WriteNullableTicks(writer, "maxDurationTicks", action.Scope.MaxDuration);
+        WriteNullableLong(writer, "maxMemoryBytes", action.Scope.MaxMemoryBytes);
         writer.WriteEndObject();
 
-        if (action.Timeout is { } timeout)
-        {
-            writer.WriteNumber("timeoutTicks", timeout.Ticks);
-        }
-        else
-        {
-            writer.WriteNull("timeoutTicks");
-        }
-
-        if (action.MemoryLimitBytes is { } memoryLimitBytes)
-        {
-            writer.WriteNumber("memoryLimitBytes", memoryLimitBytes);
-        }
-        else
-        {
-            writer.WriteNull("memoryLimitBytes");
-        }
-
+        WriteNullableTicks(writer, "timeoutTicks", action.Timeout);
+        WriteNullableLong(writer, "memoryLimitBytes", action.MemoryLimitBytes);
         writer.WriteString("mutation", action.Mutation.ToString());
         writer.WriteString("recovery", action.Recovery.ToString());
-        writer.WriteString("provenance", action.Provenance);
+        writer.WritePropertyName("provenance");
+        WriteProvenance(writer, action.Provenance);
         writer.WriteEndObject();
         writer.Flush();
 
         return Encoding.UTF8.GetString(buffer.WrittenSpan);
+    }
+
+    private static void WriteResource(Utf8JsonWriter writer, ResourceRef resource)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("environment", resource.Environment.ToString());
+        writer.WriteString("kind", resource.Kind.ToString());
+        writer.WriteString("canonicalIdentity", resource.CanonicalIdentity);
+        writer.WriteString("displayIdentity", resource.DisplayIdentity);
+        WriteNullableString(writer, "stableIdentity", resource.StableIdentity);
+        WriteNullableString(writer, "ownerContext", resource.OwnerContext);
+        WriteNullableString(writer, "observedVersion", resource.ObservedVersion);
+        writer.WriteString("observedAt", resource.ObservedAt.ToUniversalTime().ToString("O"));
+        writer.WriteString("revalidationMethod", resource.RevalidationMethod.ToString());
+        writer.WriteEndObject();
+    }
+
+    private static void WriteProvenance(Utf8JsonWriter writer, Provenance provenance)
+    {
+        writer.WriteStartObject();
+        writer.WriteString("sourceType", provenance.SourceType.ToString());
+        writer.WriteString("sourceIdentity", provenance.SourceIdentity);
+        writer.WriteString("trustClass", provenance.TrustClass.ToString());
+        writer.WriteString("observedAt", provenance.ObservedAt.ToUniversalTime().ToString("O"));
+        WriteNullableString(writer, "evidenceReference", provenance.EvidenceReference);
+        WriteStrings(writer, "transformations", provenance.Transformations);
+        writer.WriteEndObject();
+    }
+
+    private static string ResourceSortKey(ResourceRef resource)
+        => string.Join(
+            "\u001f",
+            resource.Environment,
+            resource.Kind,
+            resource.CanonicalIdentity,
+            resource.StableIdentity ?? string.Empty,
+            resource.OwnerContext ?? string.Empty,
+            resource.ObservedVersion ?? string.Empty,
+            resource.ObservedAt.ToUniversalTime().ToString("O"),
+            resource.RevalidationMethod);
+
+    private static void WriteStrings(Utf8JsonWriter writer, string propertyName, IEnumerable<string> values)
+    {
+        writer.WritePropertyName(propertyName);
+        writer.WriteStartArray();
+        foreach (var value in values)
+        {
+            writer.WriteStringValue(value);
+        }
+        writer.WriteEndArray();
+    }
+
+    private static void WriteNullableString(Utf8JsonWriter writer, string propertyName, string? value)
+    {
+        if (value is null)
+        {
+            writer.WriteNull(propertyName);
+        }
+        else
+        {
+            writer.WriteString(propertyName, value);
+        }
+    }
+
+    private static void WriteNullableTicks(Utf8JsonWriter writer, string propertyName, TimeSpan? value)
+    {
+        if (value is { } duration)
+        {
+            writer.WriteNumber(propertyName, duration.Ticks);
+        }
+        else
+        {
+            writer.WriteNull(propertyName);
+        }
+    }
+
+    private static void WriteNullableLong(Utf8JsonWriter writer, string propertyName, long? value)
+    {
+        if (value is { } number)
+        {
+            writer.WriteNumber(propertyName, number);
+        }
+        else
+        {
+            writer.WriteNull(propertyName);
+        }
     }
 }

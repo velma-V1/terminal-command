@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Terminal.Core.Evidence;
 
 namespace Terminal.Core.Actions;
 
@@ -38,15 +39,15 @@ public sealed class TerminalAction
         string operation,
         IReadOnlyList<string> arguments,
         ActionBackend backend,
-        string workingDirectory,
+        ResourceRef workingDirectory,
         IReadOnlyDictionary<string, string?> environmentDelta,
-        string targetIdentity,
-        IReadOnlyDictionary<string, string> scope,
+        IReadOnlyList<ResourceRef> targets,
+        ScopeContract scope,
         TimeSpan? timeout,
         long? memoryLimitBytes,
         MutationClass mutation,
         RecoveryClass recovery,
-        string provenance,
+        Provenance provenance,
         DateTimeOffset createdAt)
     {
         if (actionId == Guid.Empty)
@@ -75,15 +76,15 @@ public sealed class TerminalAction
         Operation = Required(operation, nameof(operation));
         Arguments = Array.AsReadOnly((arguments ?? throw new ArgumentNullException(nameof(arguments))).ToArray());
         Backend = backend;
-        WorkingDirectory = Required(workingDirectory, nameof(workingDirectory));
+        WorkingDirectory = workingDirectory ?? throw new ArgumentNullException(nameof(workingDirectory));
         EnvironmentDelta = CopyNullableValues(environmentDelta ?? throw new ArgumentNullException(nameof(environmentDelta)));
-        TargetIdentity = Required(targetIdentity, nameof(targetIdentity));
-        Scope = CopyRequiredValues(scope ?? throw new ArgumentNullException(nameof(scope)));
+        Targets = Array.AsReadOnly((targets ?? throw new ArgumentNullException(nameof(targets))).ToArray());
+        Scope = scope ?? throw new ArgumentNullException(nameof(scope));
         Timeout = timeout;
         MemoryLimitBytes = memoryLimitBytes;
         Mutation = mutation;
         Recovery = recovery;
-        Provenance = Required(provenance, nameof(provenance));
+        Provenance = provenance ?? throw new ArgumentNullException(nameof(provenance));
         CreatedAt = createdAt;
     }
 
@@ -93,15 +94,15 @@ public sealed class TerminalAction
     public string Operation { get; }
     public IReadOnlyList<string> Arguments { get; }
     public ActionBackend Backend { get; }
-    public string WorkingDirectory { get; }
+    public ResourceRef WorkingDirectory { get; }
     public IReadOnlyDictionary<string, string?> EnvironmentDelta { get; }
-    public string TargetIdentity { get; }
-    public IReadOnlyDictionary<string, string> Scope { get; }
+    public IReadOnlyList<ResourceRef> Targets { get; }
+    public ScopeContract Scope { get; }
     public TimeSpan? Timeout { get; }
     public long? MemoryLimitBytes { get; }
     public MutationClass Mutation { get; }
     public RecoveryClass Recovery { get; }
-    public string Provenance { get; }
+    public Provenance Provenance { get; }
     public DateTimeOffset CreatedAt { get; }
 
     private static string Required(string value, string name)
@@ -111,7 +112,4 @@ public sealed class TerminalAction
 
     private static IReadOnlyDictionary<string, string?> CopyNullableValues(IReadOnlyDictionary<string, string?> source)
         => new ReadOnlyDictionary<string, string?>(new Dictionary<string, string?>(source, StringComparer.Ordinal));
-
-    private static IReadOnlyDictionary<string, string> CopyRequiredValues(IReadOnlyDictionary<string, string> source)
-        => new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(source, StringComparer.Ordinal));
 }
