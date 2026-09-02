@@ -110,7 +110,7 @@ public sealed class TerminalSessionManagerTests
                 backend == ActionBackend.Wsl ? "wsl:test" : "windows:test",
                 null,
                 DateTimeOffset.UtcNow,
-                RevalidationMethod.FilesystemIdentity),
+                RevalidationMethod.DirectoryIdentity),
             new Dictionary<string, string?>(),
             [],
             new ScopeContract([]),
