@@ -64,4 +64,30 @@ public sealed record Provenance
     public DateTimeOffset ObservedAt { get; }
     public string? EvidenceReference { get; }
     public IReadOnlyList<string> Transformations { get; }
+
+    public bool Equals(Provenance? other)
+        => ReferenceEquals(this, other) ||
+           other is not null &&
+           SourceType == other.SourceType &&
+           string.Equals(SourceIdentity, other.SourceIdentity, StringComparison.Ordinal) &&
+           TrustClass == other.TrustClass &&
+           ObservedAt.Equals(other.ObservedAt) &&
+           string.Equals(EvidenceReference, other.EvidenceReference, StringComparison.Ordinal) &&
+           Transformations.SequenceEqual(other.Transformations, StringComparer.Ordinal);
+
+    public override int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(SourceType);
+        hash.Add(SourceIdentity, StringComparer.Ordinal);
+        hash.Add(TrustClass);
+        hash.Add(ObservedAt);
+        hash.Add(EvidenceReference, StringComparer.Ordinal);
+        foreach (var transformation in Transformations)
+        {
+            hash.Add(transformation, StringComparer.Ordinal);
+        }
+
+        return hash.ToHashCode();
+    }
 }
