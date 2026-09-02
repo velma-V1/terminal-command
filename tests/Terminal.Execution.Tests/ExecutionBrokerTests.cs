@@ -1,5 +1,6 @@
 using Terminal.Core.Actions;
 using Terminal.Core.Authority;
+using Terminal.Core.Evidence;
 using Terminal.Core.Transactions;
 using Terminal.Execution;
 
@@ -22,13 +23,7 @@ public sealed class ExecutionBrokerTests
         var resolver = new FakeTargetEvidenceResolver(evidence);
         var supervisor = new RecordingProcessSupervisor(journal);
         var broker = CreateBroker(supervisor, tickets, journal, resolver);
-        var authorization = ExecutionAuthorization.Issue(
-            action,
-            new PolicyDecision(PolicyDecisionKind.AllowAuto, "observe.safe"),
-            transactionId,
-            evidence,
-            approvalTicketId: null,
-            Now);
+        var authorization = ExecutionAuthorization.Issue(action, new PolicyDecision(PolicyDecisionKind.AllowAuto, "observe.safe"), transactionId, evidence, approvalTicketId: null, Now);
 
         var result = await broker.ExecuteAsync(changed, authorization, cancellationToken);
 
@@ -50,13 +45,7 @@ public sealed class ExecutionBrokerTests
         var resolver = new FakeTargetEvidenceResolver(currentEvidence);
         var supervisor = new RecordingProcessSupervisor(journal);
         var broker = CreateBroker(supervisor, new InMemoryApprovalTicketStore(), journal, resolver);
-        var authorization = ExecutionAuthorization.Issue(
-            action,
-            new PolicyDecision(PolicyDecisionKind.AllowAuto, "observe.safe", RequiresTargetRevalidation: true),
-            transactionId,
-            authorizedEvidence,
-            approvalTicketId: null,
-            Now);
+        var authorization = ExecutionAuthorization.Issue(action, new PolicyDecision(PolicyDecisionKind.AllowAuto, "observe.safe", RequiresTargetRevalidation: true), transactionId, authorizedEvidence, approvalTicketId: null, Now);
 
         var result = await broker.ExecuteAsync(action, authorization, cancellationToken);
 
@@ -74,18 +63,8 @@ public sealed class ExecutionBrokerTests
         var transactionId = Guid.NewGuid();
         var journal = new FakeJournal(transactionId, action.ActionId, TransactionState.Authorized);
         var supervisor = new RecordingProcessSupervisor(journal);
-        var broker = CreateBroker(
-            supervisor,
-            new InMemoryApprovalTicketStore(),
-            journal,
-            new FakeTargetEvidenceResolver(evidence));
-        var authorization = ExecutionAuthorization.Issue(
-            action,
-            new PolicyDecision(PolicyDecisionKind.RequireApproval, "privileged"),
-            transactionId,
-            evidence,
-            Guid.NewGuid(),
-            Now);
+        var broker = CreateBroker(supervisor, new InMemoryApprovalTicketStore(), journal, new FakeTargetEvidenceResolver(evidence));
+        var authorization = ExecutionAuthorization.Issue(action, new PolicyDecision(PolicyDecisionKind.RequireApproval, "privileged"), transactionId, evidence, Guid.NewGuid(), Now);
 
         var result = await broker.ExecuteAsync(action, authorization, cancellationToken);
 
@@ -105,18 +84,8 @@ public sealed class ExecutionBrokerTests
         var transactionId = Guid.NewGuid();
         var journal = new FakeJournal(transactionId, action.ActionId, TransactionState.Prepared);
         var supervisor = new RecordingProcessSupervisor(journal);
-        var broker = CreateBroker(
-            supervisor,
-            new InMemoryApprovalTicketStore(),
-            journal,
-            new FakeTargetEvidenceResolver(evidence));
-        var authorization = ExecutionAuthorization.Issue(
-            action,
-            new PolicyDecision(PolicyDecisionKind.AllowAuto, "observe.safe"),
-            transactionId,
-            evidence,
-            approvalTicketId: null,
-            Now);
+        var broker = CreateBroker(supervisor, new InMemoryApprovalTicketStore(), journal, new FakeTargetEvidenceResolver(evidence));
+        var authorization = ExecutionAuthorization.Issue(action, new PolicyDecision(PolicyDecisionKind.AllowAuto, "observe.safe"), transactionId, evidence, approvalTicketId: null, Now);
 
         var result = await broker.ExecuteAsync(action, authorization, cancellationToken);
 
@@ -134,18 +103,8 @@ public sealed class ExecutionBrokerTests
         var transactionId = Guid.NewGuid();
         var journal = new FakeJournal(transactionId, action.ActionId, TransactionState.Authorized);
         var supervisor = new RecordingProcessSupervisor(journal);
-        var broker = CreateBroker(
-            supervisor,
-            new InMemoryApprovalTicketStore(),
-            journal,
-            new FakeTargetEvidenceResolver(evidence));
-        var authorization = ExecutionAuthorization.Issue(
-            action,
-            new PolicyDecision(PolicyDecisionKind.AllowAuto, "observe.safe"),
-            transactionId,
-            evidence,
-            approvalTicketId: null,
-            Now);
+        var broker = CreateBroker(supervisor, new InMemoryApprovalTicketStore(), journal, new FakeTargetEvidenceResolver(evidence));
+        var authorization = ExecutionAuthorization.Issue(action, new PolicyDecision(PolicyDecisionKind.AllowAuto, "observe.safe"), transactionId, evidence, approvalTicketId: null, Now);
 
         var result = await broker.ExecuteAsync(action, authorization, cancellationToken);
 
@@ -168,21 +127,10 @@ public sealed class ExecutionBrokerTests
         var journal = new FakeJournal(transactionId, action.ActionId, TransactionState.Authorized);
         var supervisor = new RecordingProcessSupervisor(journal);
         var broker = CreateBroker(supervisor, tickets, journal, new FakeTargetEvidenceResolver(evidence));
-        var authorization = ExecutionAuthorization.Issue(
-            action,
-            new PolicyDecision(PolicyDecisionKind.RequireApproval, "privileged"),
-            transactionId,
-            evidence,
-            ticket.TicketId,
-            Now);
+        var authorization = ExecutionAuthorization.Issue(action, new PolicyDecision(PolicyDecisionKind.RequireApproval, "privileged"), transactionId, evidence, ticket.TicketId, Now);
 
         var result = await broker.ExecuteAsync(action, authorization, cancellationToken);
-        var replay = await tickets.ConsumeAsync(
-            ticket.TicketId,
-            action.ActionId,
-            ActionHash.Compute(action),
-            Now.AddSeconds(1),
-            cancellationToken);
+        var replay = await tickets.ConsumeAsync(ticket.TicketId, action.ActionId, ActionHash.Compute(action), Now.AddSeconds(1), cancellationToken);
 
         Assert.Equal(ExecutionBrokerOutcome.Executed, result.Outcome);
         Assert.Equal(ApprovalValidation.Valid, result.ApprovalValidation);
@@ -190,11 +138,7 @@ public sealed class ExecutionBrokerTests
         Assert.Equal(1, supervisor.Calls);
     }
 
-    private static ExecutionBroker CreateBroker(
-        IProcessSupervisor supervisor,
-        IApprovalTicketStore tickets,
-        ITransactionJournal journal,
-        ITargetEvidenceResolver resolver)
+    private static ExecutionBroker CreateBroker(IProcessSupervisor supervisor, IApprovalTicketStore tickets, ITransactionJournal journal, ITargetEvidenceResolver resolver)
         => new(supervisor, tickets, journal, resolver, new FixedTimeProvider(Now));
 
     private static TerminalAction CreateAction(string operation = "git", Guid? actionId = null)
@@ -205,15 +149,18 @@ public sealed class ExecutionBrokerTests
             operation: operation,
             arguments: ["status"],
             backend: ActionBackend.Windows,
-            workingDirectory: "C:\\repo",
+            workingDirectory: new ResourceRef(ResourceEnvironment.Windows, ResourceKind.Directory, "C:\\repo", "repo", "dir:repo", "windows-host", "generation:1", Now, RevalidationMethod.DirectoryIdentity),
             environmentDelta: new Dictionary<string, string?>(),
-            targetIdentity: "repo:123",
-            scope: new Dictionary<string, string> { ["filesystem"] = "read:C:\\repo" },
+            targets:
+            [
+                new ResourceRef(ResourceEnvironment.Windows, ResourceKind.Repository, "C:\\repo", "repo", "repo:123", "windows-host", "head:abc", Now, RevalidationMethod.RepositoryHead)
+            ],
+            scope: new ScopeContract([new ScopeEntry(ScopeDimension.FilesystemRead, "C:\\repo")]),
             timeout: TimeSpan.FromSeconds(30),
             memoryLimitBytes: 256 * 1024 * 1024,
             mutation: MutationClass.Observe,
             recovery: RecoveryClass.None,
-            provenance: "user",
+            provenance: new Provenance(ProvenanceSourceType.User, "user", TrustClass.Authenticated, Now, "evidence:user", []),
             createdAt: Now);
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
@@ -225,9 +172,7 @@ public sealed class ExecutionBrokerTests
     {
         public int Calls { get; private set; }
 
-        public ValueTask<TargetEvidenceReference> RevalidateAsync(
-            TerminalAction action,
-            CancellationToken cancellationToken = default)
+        public ValueTask<TargetEvidenceReference> RevalidateAsync(TerminalAction action, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             ArgumentNullException.ThrowIfNull(action);
@@ -241,44 +186,28 @@ public sealed class ExecutionBrokerTests
         public int Calls { get; private set; }
         public TransactionState? StateObservedAtExecution { get; private set; }
 
-        public ValueTask<ProcessExecutionResult> ExecuteAsync(
-            ProcessExecutionRequest request,
-            CancellationToken cancellationToken = default)
+        public ValueTask<ProcessExecutionResult> ExecuteAsync(ProcessExecutionRequest request, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             Calls++;
             StateObservedAtExecution = journal.Current.State;
-            return ValueTask.FromResult(new ProcessExecutionResult(
-                request.ExecutionId,
-                ProcessExecutionStatus.Exited,
-                exitCode: 0));
+            return ValueTask.FromResult(new ProcessExecutionResult(request.ExecutionId, ProcessExecutionStatus.Exited, exitCode: 0));
         }
     }
 
     private sealed class FakeJournal : ITransactionJournal
     {
-        public FakeJournal(
-            Guid transactionId,
-            Guid actionId,
-            TransactionState state)
+        public FakeJournal(Guid transactionId, Guid actionId, TransactionState state)
         {
             Current = new TransactionRecord(transactionId, actionId, state, Now, Now);
         }
 
         public TransactionRecord Current { get; private set; }
 
-        public ValueTask<TransactionRecord> CreateAsync(
-            Guid transactionId,
-            Guid actionId,
-            DateTimeOffset now,
-            CancellationToken cancellationToken = default)
+        public ValueTask<TransactionRecord> CreateAsync(Guid transactionId, Guid actionId, DateTimeOffset now, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public ValueTask<TransactionRecord> TransitionAsync(
-            Guid transactionId,
-            TransactionState to,
-            DateTimeOffset now,
-            CancellationToken cancellationToken = default)
+        public ValueTask<TransactionRecord> TransitionAsync(Guid transactionId, TransactionState to, DateTimeOffset now, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (transactionId != Current.TransactionId)
@@ -291,22 +220,17 @@ public sealed class ExecutionBrokerTests
             return ValueTask.FromResult(Current);
         }
 
-        public ValueTask<TransactionRecord?> GetAsync(
-            Guid transactionId,
-            CancellationToken cancellationToken = default)
+        public ValueTask<TransactionRecord?> GetAsync(Guid transactionId, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
             TransactionRecord? result = transactionId == Current.TransactionId ? Current : null;
             return ValueTask.FromResult(result);
         }
 
-        public ValueTask<IReadOnlyList<TransactionEventRecord>> ListEventsAsync(
-            Guid transactionId,
-            CancellationToken cancellationToken = default)
+        public ValueTask<IReadOnlyList<TransactionEventRecord>> ListEventsAsync(Guid transactionId, CancellationToken cancellationToken = default)
             => ValueTask.FromResult<IReadOnlyList<TransactionEventRecord>>([]);
 
-        public ValueTask<IReadOnlyList<TransactionRecord>> ListIncompleteAsync(
-            CancellationToken cancellationToken = default)
+        public ValueTask<IReadOnlyList<TransactionRecord>> ListIncompleteAsync(CancellationToken cancellationToken = default)
             => ValueTask.FromResult<IReadOnlyList<TransactionRecord>>([Current]);
     }
 }
