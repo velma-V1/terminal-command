@@ -1,10 +1,12 @@
 using Terminal.Core.Actions;
 using Terminal.Core.Authority;
+using Terminal.Core.Evidence;
 
 namespace Terminal.Core.Tests.Authority;
 
 public sealed class PolicyEngineTests
 {
+    private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-09-01T20:00:00Z");
     private readonly PolicyEngine _engine = new();
 
     [Fact]
@@ -25,7 +27,6 @@ public sealed class PolicyEngineTests
     public void Local_mutation_requires_verifier_and_recovery_for_automatic_authority()
     {
         var action = Action(MutationClass.LocalMutation, recovery: RecoveryClass.Checkpointable);
-
         Assert.Equal(PolicyDecisionKind.AllowAuto, _engine.Evaluate(action, Facts(verifierAvailable: true, recoveryPrepared: true)).Kind);
         Assert.Equal(PolicyDecisionKind.RequireApproval, _engine.Evaluate(action, Facts(verifierAvailable: false, recoveryPrepared: true)).Kind);
         Assert.Equal(PolicyDecisionKind.RequireApproval, _engine.Evaluate(action, Facts(verifierAvailable: true, recoveryPrepared: false)).Kind);
@@ -43,10 +44,7 @@ public sealed class PolicyEngineTests
     [Fact]
     public void Catastrophic_deny_outranks_every_other_condition()
     {
-        var decision = _engine.Evaluate(
-            Action(MutationClass.Ephemeral),
-            Facts(catastrophicDenied: true, verifierAvailable: true, recoveryPrepared: true));
-
+        var decision = _engine.Evaluate(Action(MutationClass.Ephemeral), Facts(catastrophicDenied: true, verifierAvailable: true, recoveryPrepared: true));
         Assert.Equal(PolicyDecisionKind.Deny, decision.Kind);
         Assert.Equal("catastrophic-deny", decision.ReasonCode);
     }
@@ -60,10 +58,7 @@ public sealed class PolicyEngineTests
         Assert.Equal("target-revalidation-required", decision.ReasonCode);
     }
 
-    private static TerminalAction Action(
-        MutationClass mutation,
-        RecoveryClass recovery = RecoveryClass.None,
-        ActionBackend backend = ActionBackend.Windows)
+    private static TerminalAction Action(MutationClass mutation, RecoveryClass recovery = RecoveryClass.None, ActionBackend backend = ActionBackend.Windows)
         => new(
             Guid.NewGuid(),
             "terminal",
@@ -71,16 +66,19 @@ public sealed class PolicyEngineTests
             "test-operation",
             [],
             backend,
-            "C:\\repo",
+            Resource(ResourceKind.Directory, "C:\\repo", "dir:repo", RevalidationMethod.DirectoryIdentity),
             new Dictionary<string, string?>(),
-            "target:1",
-            new Dictionary<string, string>(),
+            [Resource(ResourceKind.Repository, "C:\\repo", "repo:1", RevalidationMethod.RepositoryHead)],
+            new ScopeContract([new ScopeEntry(ScopeDimension.FilesystemRead, "C:\\repo")]),
             TimeSpan.FromSeconds(30),
             64 * 1024 * 1024,
             mutation,
             recovery,
-            "test",
-            DateTimeOffset.UtcNow);
+            new Provenance(ProvenanceSourceType.User, "test", TrustClass.Authenticated, Now, "evidence:test", []),
+            Now);
+
+    private static ResourceRef Resource(ResourceKind kind, string canonicalIdentity, string stableIdentity, RevalidationMethod revalidationMethod)
+        => new(ResourceEnvironment.Windows, kind, canonicalIdentity, canonicalIdentity, stableIdentity, "windows-host", "version:1", Now, revalidationMethod);
 
     private static PolicyFacts Facts(
         bool targetRevalidated = true,
@@ -89,11 +87,5 @@ public sealed class PolicyEngineTests
         bool privilegeRequired = false,
         bool rootOfTrustChange = false,
         bool catastrophicDenied = false)
-        => new(
-            targetRevalidated,
-            verifierAvailable,
-            recoveryPrepared,
-            privilegeRequired,
-            rootOfTrustChange,
-            catastrophicDenied);
+        => new(targetRevalidated, verifierAvailable, recoveryPrepared, privilegeRequired, rootOfTrustChange, catastrophicDenied);
 }
