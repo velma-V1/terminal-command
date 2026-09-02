@@ -148,13 +148,12 @@ public sealed class PlanningRecoveryTests
             subject,
             value,
             new Provenance(
-                ProvenanceSourceType.SystemProbe,
+                ProvenanceSourceType.System,
                 "test-probe",
-                "1",
-                ProvenanceTrustClass.SystemObserved,
+                TrustClass.TrustedLocal,
                 Now,
                 "evidence:test",
-                null),
+                []),
             Now,
             maxAge,
             generation: 1,
@@ -187,11 +186,10 @@ public sealed class PlanningRecoveryTests
             new Provenance(
                 ProvenanceSourceType.Model,
                 "qwen3.5-9b",
-                "local",
-                ProvenanceTrustClass.UntrustedExternal,
+                TrustClass.ModelGenerated,
                 Now,
                 "model-response:test",
-                null));
+                []));
 
     private static ResourceRef Repo()
         => new(
