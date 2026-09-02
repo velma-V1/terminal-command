@@ -1,148 +1,110 @@
-# Terminal Command
+# Terminal Command V1
 
-Terminal Command is a terminal-native personal operating layer for **normal shell commands, natural language, and selectable `/` commands**. The model interprets intent; deterministic code retains authority over execution, permissions, evidence, and recovery.
+Terminal Command V1 is a Windows-first, deterministic-first autonomous computer engineering and assurance system that also aims to be an excellent everyday terminal.
 
-```text
-input
-  ├─ shell
-  ├─ natural language
-  └─ /commands
-       ↓
-deterministic router / tiny optional model
-       ↓
-typed capability
-       ↓
-policy gate
-       ↓
-executor (native / WSL)
-       ↓
-result + history + checkpoints
-```
-
-## Core behavior
-
-- Normal shell commands remain usable; session `cd` persists.
-- Natural language resolves deterministic rules and typed capabilities first, then optionally asks Ollama.
-- Model output is a proposal, never authorization.
-- Known read-only capabilities may run automatically.
-- Mutating, remote, security, and explicitly approval-marked actions require confirmation.
-- Catastrophic patterns are denied even if an action also carries approval/security metadata.
-- Projects, workflows, recurring job definitions, history, and recovery checkpoints persist locally.
-- No hidden automation daemon is installed.
-
-## Capability packs
-
-**Daily:** file search/hash/duplicates, archive inspection/creation, disk/system information, URL/path launching.
-
-**Engineering:** Git status/diff/log, project test/build/lint discovery, dependency inspection, log tailing, process inspection, bounded diagnose workflows.
-
-**Defensive security:** local secret scanning, dependency-audit adapters, static scanning, and local network inspection. Security actions always require approval. Optional installed tools such as Gitleaks, pip-audit, npm audit, cargo-audit, and Semgrep are used when present; bounded local fallbacks are explicit about degraded coverage.
-
-**Web/remote:** bounded HTTP(S) retrieval and validated SSH/Tailscale SSH adapters. Network/remote actions require approval. Terminal Command does not collect or embed passwords.
-
-## Slash commands
-
-Run `/help` inside the application. Current command families include:
-
-`/benchmark`, `/capabilities`, `/checkpoint`, `/doctor`, `/explain`, `/history`, `/jobs`, `/project`, `/update`, `/workflow`, `/exit`.
-
-`/benchmark` scores routing only; it never executes proposed actions.
-
-## Windows install
-
-From a checked-out repository in PowerShell:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\install.ps1
-```
-
-The installer creates a versioned release under `%LOCALAPPDATA%\TerminalCommand`, validates it with `terminal-command --doctor`, atomically sets the active release, writes a stable launcher, and creates a **Terminal Command** desktop shortcut. The shortcut opens the application in one terminal window.
-
-For CI or custom locations:
-
-```powershell
-.\install.ps1 -InstallRoot C:\Tools\TerminalCommand -NoShortcut
-```
-
-Uninstall the owned install directory while preserving user history/state:
-
-```powershell
-.\uninstall.ps1
-```
-
-Add `-RemoveState` only when you also want `~/.terminal-command` deleted.
-
-## Updates and rollback
-
-Configuration lives in `~/.terminal-command/config.json`. Updates are disabled until `update_manifest_url` is set to an accessible HTTPS JSON manifest:
-
-```json
-{
-  "version": 1,
-  "model_enabled": true,
-  "model": "qwen3.5:2b",
-  "update_channel": "stable",
-  "update_manifest_url": "https://example.com/terminal-command/update-manifest.json"
-}
-```
-
-Manifest shape:
-
-```json
-{
-  "version": "0.2.0",
-  "artifact_url": "https://example.com/terminal_command-0.2.0-py3-none-any.whl",
-  "sha256": "<64 hex characters>"
-}
-```
-
-Update flow:
+**One system, one authority path.** Debugging, repair, settings, updates, automation, authorized security testing, privacy/quarantine, normal shell work, and future capabilities all use the same state, planning, Action, policy, execution, evidence, verification, and recovery machinery.
 
 ```text
-/update check
-/update prepare
-/update apply 0.2.0
-/update rollback
+user goal / command
+      ↓
+SystemGraph
+      ↓
+deterministic planner/router
+      ↓
+Capability
+      ↓
+immutable Action / Plan
+      ↓
+policy + exact authorization
+      ↓
+Execution Broker
+  ┌───┼─────────────┐
+Windows WSL   disposable isolation
+  └───┼─────────────┘
+      ↓
+normalized evidence
+      ↓
+independent verification
+      ↓
+commit / rollback / repair
 ```
 
-`check` and `prepare` require approval before network access. `prepare` verifies SHA-256 and stages the wheel without changing the active release. `apply` installs into a new release directory and runs that release's `--doctor`; only a healthy release can become current. Rollback switches the atomic release pointer back to the previous healthy release.
+## Core laws
 
-**Private-repository note:** Terminal Command intentionally does not store GitHub credentials. A private GitHub release URL will therefore need an authenticated/access-controlled distribution mechanism outside the app, or an HTTPS manifest/artifact endpoint the machine can access.
+- AI is optional reasoning acceleration, never authority.
+- Windows owns final policy/authorization; WSL is an execution/analysis arm.
+- Every consequential side effect goes through one brokered immutable Action path.
+- Approval binds to the exact Action and current real-world target.
+- Unknown, partial, flaky, environment failure, and oracle failure are not success.
+- Rollback is claimed only when recovery is proven.
+- Known work should be planned deterministically where practical.
+- External tools are replaceable evidence-producing adapters, not truth authorities.
+- Capabilities do not get separate planners, state stores, policy engines, or autonomous brains.
+- GitHub CI does not substitute for real Windows 11 Home + WSL2 validation.
 
-## Model
+## Current implemented foundation
 
-Default config targets `qwen3.5:2b` through local Ollama. The program remains usable if Ollama or the model is absent; deterministic routing, shell, slash commands, policy, projects, workflows, and local capabilities still work. Start explicitly without model routing using:
+The active production lineage is .NET 10 / C# and currently contains:
+
+- immutable Action identity and canonical hashing;
+- deterministic policy/autonomy decisions;
+- exact-action approval tickets with durable single-use SQLite consumption;
+- durable transaction journal and explicit recovery states;
+- independent verification outcome model;
+- execution authorization bound to Action hash and target evidence;
+- one execution broker before OS side effects;
+- Windows Job Object process supervision with suspended child assignment, bounded output, timeout/cancellation, process-tree termination, and accounting;
+- Linux process supervision with cgroup v2 when available and process-group fallback;
+- framed bounded Protobuf protocol;
+- one persistent parent-owned `wsl.exe ... terminal-linux-agent --stdio` transport;
+- correlated Hello/Health/Heartbeat probes and fail-closed protocol behavior;
+- Windows + Ubuntu foundation CI;
+- a real-Windows WSL smoke gate for target-machine execution.
+
+This is **not yet the complete product**. Interactive ConPTY/PTY, live SystemGraph, deterministic capability planning, auto-settings, full engineering/debug/repair, authorized assurance tooling, privacy/quarantine, update/maintenance automation, and AI escalation are completion gates in the canonical architecture.
+
+## Approved completion direction
+
+High-value mature primitives should be reused where they beat custom machinery:
+
+- **osquery/native probes** — live machine/project discovery;
+- **DSC v3/native resources** — desired-state settings/configuration;
+- **ETW** — Windows causal/debug evidence;
+- **systemd transient units** — candidate preferred WSL lifecycle/cgroup wrapper when they beat direct cgroup management;
+- **Dangerzone-class sanitization** — supported suspicious document handling;
+- **Opengrep/OSV/ZAP/fuzzers/sanitizers/etc.** — replaceable assurance adapters;
+- **Coyote** — test-only systematic concurrency exploration candidate;
+- **TUF-style metadata** — rollback/freeze-resistant update design;
+- **Unified Planning/Fast Downward** — planner benchmark/oracle before any runtime adoption.
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the unified design and completion gates.
+
+## Evidence and architecture admission
+
+- [`docs/EVIDENCE.md`](docs/EVIDENCE.md) preserves the durable lessons from the discarded original Python V1/V2 implementation. The old code is not a dependency of current V1.
+- [`docs/Q-1-Q32-PROGRAM-DESIGN-REVIEW.md`](docs/Q-1-Q32-PROGRAM-DESIGN-REVIEW.md) is the mandatory Q−1/Q0–Q32/Q∞ admission review for major architecture decisions.
+- [`docs/REAL-PC-VALIDATION.md`](docs/REAL-PC-VALIDATION.md) defines target-machine release qualification.
+
+## Build and test
+
+Requires the SDK pinned by `global.json`.
 
 ```powershell
-terminal-command --no-model
+dotnet restore Terminal.slnx
+dotnet build Terminal.slnx --configuration Release
+dotnet test Terminal.slnx --configuration Release --no-build
 ```
 
-## Development
+The hosted foundation matrix runs on Windows and Ubuntu.
 
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# Linux/WSL: source .venv/bin/activate
-python -m pip install -e ".[test]"
-python -m pytest -q
-terminal-command --doctor
+Real WSL integration on a Windows 11 Home + WSL2 target:
+
+```powershell
+.\tools\v1-wsl-smoke.ps1 -Distro Ubuntu
 ```
 
-Run the checked-in routing corpus:
+## Repository status
 
-```bash
-python -m terminal_command.benchmark benchmarks/router_tasks.json
-```
+Current V1 development occurs on a feature branch until qualification gates pass. **Do not merge to `main` until explicitly approved after verification.**
 
-CI tests Windows and Ubuntu on Python 3.11 and 3.12, then performs package/install and Windows installer smoke validation.
-
-## Boundaries
-
-- The application is not an unrestricted autonomous shell.
-- Security capabilities are for authorized defensive use and remain approval-gated.
-- Model-generated raw shell is a compatibility fallback and does not bypass policy.
-- Recurring jobs are definitions only; no hidden background daemon is created.
-- Update activation is explicit; the application does not silently rewrite itself at startup.
-- Optional third-party scanners and runtimes may be absent; `/doctor` reports optional availability.
-
-See [`docs/REAL-PC-VALIDATION.md`](docs/REAL-PC-VALIDATION.md) for the final machine-validation checklist and [`docs/Q0-Q20-PROGRAM-DESIGN-REVIEW.md`](docs/Q0-Q20-PROGRAM-DESIGN-REVIEW.md) for architecture review criteria.
+Historical Git commits remain laboratory evidence; the active repository tree intentionally does not carry the discarded Python V1/V2 product.
