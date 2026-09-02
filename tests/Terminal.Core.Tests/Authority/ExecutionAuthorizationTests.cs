@@ -1,5 +1,6 @@
 using Terminal.Core.Actions;
 using Terminal.Core.Authority;
+using Terminal.Core.Evidence;
 
 namespace Terminal.Core.Tests.Authority;
 
@@ -14,14 +15,7 @@ public sealed class ExecutionAuthorizationTests
         var transactionId = Guid.NewGuid();
         var evidence = new TargetEvidenceReference(Guid.NewGuid(), 7);
         var policy = new PolicyDecision(PolicyDecisionKind.AllowAuto, "observe.safe", RequiresTargetRevalidation: true);
-
-        var authorization = ExecutionAuthorization.Issue(
-            action,
-            policy,
-            transactionId,
-            evidence,
-            approvalTicketId: null,
-            Now);
+        var authorization = ExecutionAuthorization.Issue(action, policy, transactionId, evidence, approvalTicketId: null, Now);
 
         Assert.Equal(action.ActionId, authorization.ActionId);
         Assert.Equal(ActionHash.Compute(action), authorization.ActionHash);
@@ -44,9 +38,7 @@ public sealed class ExecutionAuthorizationTests
             new TargetEvidenceReference(Guid.NewGuid(), 1),
             approvalTicketId: null,
             Now);
-
         var changed = CreateAction(operation: "git-diff", actionId: action.ActionId);
-
         Assert.False(authorization.MatchesAction(changed));
     }
 
@@ -55,14 +47,7 @@ public sealed class ExecutionAuthorizationTests
     {
         var action = CreateAction();
         var policy = new PolicyDecision(PolicyDecisionKind.RequireApproval, "privileged");
-
-        Assert.Throws<ArgumentException>(() => ExecutionAuthorization.Issue(
-            action,
-            policy,
-            Guid.NewGuid(),
-            new TargetEvidenceReference(Guid.NewGuid(), 1),
-            approvalTicketId: null,
-            Now));
+        Assert.Throws<ArgumentException>(() => ExecutionAuthorization.Issue(action, policy, Guid.NewGuid(), new TargetEvidenceReference(Guid.NewGuid(), 1), approvalTicketId: null, Now));
     }
 
     [Fact]
@@ -70,14 +55,7 @@ public sealed class ExecutionAuthorizationTests
     {
         var action = CreateAction();
         var policy = new PolicyDecision(PolicyDecisionKind.Deny, "catastrophic");
-
-        Assert.Throws<InvalidOperationException>(() => ExecutionAuthorization.Issue(
-            action,
-            policy,
-            Guid.NewGuid(),
-            new TargetEvidenceReference(Guid.NewGuid(), 1),
-            approvalTicketId: null,
-            Now));
+        Assert.Throws<InvalidOperationException>(() => ExecutionAuthorization.Issue(action, policy, Guid.NewGuid(), new TargetEvidenceReference(Guid.NewGuid(), 1), approvalTicketId: null, Now));
     }
 
     [Fact]
@@ -92,7 +70,6 @@ public sealed class ExecutionAuthorizationTests
             new TargetEvidenceReference(evidenceId, 4),
             approvalTicketId: null,
             Now);
-
         Assert.False(authorization.MatchesTarget(new TargetEvidenceReference(evidenceId, 5)));
     }
 
@@ -108,7 +85,6 @@ public sealed class ExecutionAuthorizationTests
             new TargetEvidenceReference(Guid.NewGuid(), 2),
             ticketId,
             Now);
-
         Assert.Equal(ticketId, authorization.ApprovalTicketId);
     }
 
@@ -120,14 +96,17 @@ public sealed class ExecutionAuthorizationTests
             operation: operation,
             arguments: ["status"],
             backend: ActionBackend.Windows,
-            workingDirectory: "C:\\repo",
+            workingDirectory: new ResourceRef(ResourceEnvironment.Windows, ResourceKind.Directory, "C:\\repo", "repo", "dir:repo", "windows-host", "generation:1", Now, RevalidationMethod.DirectoryIdentity),
             environmentDelta: new Dictionary<string, string?>(),
-            targetIdentity: "repo:123",
-            scope: new Dictionary<string, string> { ["filesystem"] = "read:C:\\repo" },
+            targets:
+            [
+                new ResourceRef(ResourceEnvironment.Windows, ResourceKind.Repository, "C:\\repo", "repo", "repo:123", "windows-host", "head:abc", Now, RevalidationMethod.RepositoryHead)
+            ],
+            scope: new ScopeContract([new ScopeEntry(ScopeDimension.FilesystemRead, "C:\\repo")]),
             timeout: TimeSpan.FromSeconds(30),
             memoryLimitBytes: 256 * 1024 * 1024,
             mutation: MutationClass.Observe,
             recovery: RecoveryClass.None,
-            provenance: "user",
+            provenance: new Provenance(ProvenanceSourceType.User, "user", TrustClass.Authenticated, Now, "evidence:user", []),
             createdAt: Now);
 }
