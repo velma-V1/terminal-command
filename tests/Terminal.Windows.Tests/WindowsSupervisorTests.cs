@@ -1,5 +1,6 @@
 using System.Text;
 using Terminal.Core.Actions;
+using Terminal.Core.Evidence;
 using Terminal.Execution;
 using Terminal.Windows;
 
@@ -76,10 +77,7 @@ public sealed class WindowsJobObjectSupervisorTests
     {
         if (!OperatingSystem.IsWindows()) return;
         var cancellationToken = TestContext.Current.CancellationToken;
-        var action = CreateAction(
-            "powershell.exe",
-            ["-NoProfile", "-Command", "[Console]::Out.Write('x' * 200000)"],
-            Environment.CurrentDirectory);
+        var action = CreateAction("powershell.exe", ["-NoProfile", "-Command", "[Console]::Out.Write('x' * 200000)"], Environment.CurrentDirectory);
         var supervisor = new WindowsJobObjectSupervisor(maxCaptureBytes: 4096);
 
         var result = await supervisor.ExecuteAsync(Request(action), cancellationToken);
@@ -103,11 +101,7 @@ public sealed class WindowsJobObjectSupervisorTests
             var escapedMarker = marker.Replace("'", "''", StringComparison.Ordinal);
             var child = $"Start-Sleep -Seconds 2; Set-Content -LiteralPath '{escapedMarker}' -Value escaped";
             var script = $"Start-Process powershell.exe -ArgumentList @('-NoProfile','-Command',\"{child.Replace("\"", "`\"", StringComparison.Ordinal)}\"); Start-Sleep -Seconds 30";
-            var action = CreateAction(
-                "powershell.exe",
-                ["-NoProfile", "-Command", script],
-                directory.FullName,
-                timeout: TimeSpan.FromMilliseconds(500));
+            var action = CreateAction("powershell.exe", ["-NoProfile", "-Command", script], directory.FullName, timeout: TimeSpan.FromMilliseconds(500));
             var supervisor = new WindowsJobObjectSupervisor(maxCaptureBytes: 8192);
 
             var result = await supervisor.ExecuteAsync(Request(action), cancellationToken);
@@ -128,11 +122,7 @@ public sealed class WindowsJobObjectSupervisorTests
         if (!OperatingSystem.IsWindows()) return;
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         cts.CancelAfter(TimeSpan.FromMilliseconds(300));
-        var action = CreateAction(
-            "powershell.exe",
-            ["-NoProfile", "-Command", "Start-Sleep -Seconds 30"],
-            Environment.CurrentDirectory,
-            timeout: TimeSpan.FromSeconds(20));
+        var action = CreateAction("powershell.exe", ["-NoProfile", "-Command", "Start-Sleep -Seconds 30"], Environment.CurrentDirectory, timeout: TimeSpan.FromSeconds(20));
         var supervisor = new WindowsJobObjectSupervisor(maxCaptureBytes: 8192);
 
         var result = await supervisor.ExecuteAsync(Request(action), cts.Token);
@@ -142,9 +132,7 @@ public sealed class WindowsJobObjectSupervisorTests
     }
 
     private static void AssertStatus(ProcessExecutionResult result, ProcessExecutionStatus expected)
-        => Assert.True(
-            result.Status == expected,
-            $"Expected {expected} but got {result.Status}. Native failure: {result.ErrorMessage ?? "<none>"}");
+        => Assert.True(result.Status == expected, $"Expected {expected} but got {result.Status}. Native failure: {result.ErrorMessage ?? "<none>"}");
 
     private static ProcessExecutionRequest Request(TerminalAction action)
         => new(Guid.NewGuid(), Guid.NewGuid(), action);
@@ -155,21 +143,25 @@ public sealed class WindowsJobObjectSupervisorTests
         string workingDirectory,
         IReadOnlyDictionary<string, string?>? environment = null,
         TimeSpan? timeout = null)
-        => new(
+    {
+        var now = DateTimeOffset.UtcNow;
+        var processIdentity = $"process:{Guid.NewGuid():N}";
+        return new TerminalAction(
             Guid.NewGuid(),
             "test",
             "test.windows",
             operation,
             arguments,
             ActionBackend.Windows,
-            workingDirectory,
+            new ResourceRef(ResourceEnvironment.Windows, ResourceKind.Directory, workingDirectory, workingDirectory, $"dir:{workingDirectory}", "windows-host", null, now, RevalidationMethod.DirectoryIdentity),
             environment ?? new Dictionary<string, string?>(),
-            $"process:{Guid.NewGuid():N}",
-            new Dictionary<string, string> { ["process"] = "test" },
+            [new ResourceRef(ResourceEnvironment.Windows, ResourceKind.Process, processIdentity, processIdentity, processIdentity, "windows-host", null, now, RevalidationMethod.ProcessIdentity)],
+            new ScopeContract([new ScopeEntry(ScopeDimension.Process, "test")]),
             timeout ?? TimeSpan.FromSeconds(10),
             512L * 1024 * 1024,
             MutationClass.Ephemeral,
             RecoveryClass.None,
-            "test",
-            DateTimeOffset.UtcNow);
+            new Provenance(ProvenanceSourceType.System, "test", TrustClass.TrustedLocal, now, "test:windows", []),
+            now);
+    }
 }
