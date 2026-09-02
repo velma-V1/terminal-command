@@ -18,7 +18,8 @@ public sealed class LinuxAgentProtocolHandler
             return ValueTask.FromResult(request.Header.MessageType switch
             {
                 ProtocolMessageType.Hello => Hello(request),
-                ProtocolMessageType.Health => Health(request),
+                ProtocolMessageType.Health => Probe(request, ProtocolMessageType.Health, "ready"),
+                ProtocolMessageType.Heartbeat => Probe(request, ProtocolMessageType.Heartbeat, "alive"),
                 ProtocolMessageType.Cancel => Cancel(request),
                 ProtocolMessageType.ActionPrepare or ProtocolMessageType.ActionExecute => Error(
                     request.Header.RequestId,
@@ -62,13 +63,16 @@ public sealed class LinuxAgentProtocolHandler
             });
     }
 
-    private static ProtocolFrame Health(ProtocolFrame request)
+    private static ProtocolFrame Probe(
+        ProtocolFrame request,
+        ProtocolMessageType responseType,
+        string status)
     {
         _ = HealthRequest.Parser.ParseFrom(request.Payload.Span);
         return Encode(
-            ProtocolMessageType.Health,
+            responseType,
             request.Header.RequestId,
-            new HealthResponse { Healthy = true, Status = "ready" });
+            new HealthResponse { Healthy = true, Status = status });
     }
 
     private static ProtocolFrame Cancel(ProtocolFrame request)
