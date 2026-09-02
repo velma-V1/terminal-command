@@ -4,7 +4,7 @@ namespace Terminal.State;
 
 public sealed class SqliteOperationalStore : IAsyncDisposable
 {
-    private const int SchemaVersion = 1;
+    private const int SchemaVersion = 2;
     private const int BusyTimeoutMilliseconds = 5_000;
 
     private readonly string _databasePath;
@@ -35,9 +35,8 @@ public sealed class SqliteOperationalStore : IAsyncDisposable
         }
 
         await using var connection = await OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
-
         await SetAndVerifyWalAsync(connection, cancellationToken).ConfigureAwait(false);
-        await CreateSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
+        await EnsureSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
         await VerifySchemaVersionAsync(connection, cancellationToken).ConfigureAwait(false);
     }
 
@@ -124,19 +123,60 @@ public sealed class SqliteOperationalStore : IAsyncDisposable
         }
     }
 
-    private static async Task CreateSchemaAsync(
+    private static async Task EnsureSchemaAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
+    {
+        var metadata = connection.CreateCommand();
+        metadata.CommandText = """
+            CREATE TABLE IF NOT EXISTS schema_info (
+                singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+                version INTEGER NOT NULL CHECK (version > 0)
+            ) STRICT;
+            """;
+        await metadata.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+        var readVersion = connection.CreateCommand();
+        readVersion.CommandText = "SELECT version FROM schema_info WHERE singleton = 1;";
+        var rawVersion = await readVersion.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        var existingVersion = rawVersion is null or DBNull
+            ? 0
+            : checked(Convert.ToInt32(rawVersion, System.Globalization.CultureInfo.InvariantCulture));
+
+        if (existingVersion > SchemaVersion || existingVersion < 0)
+        {
+            throw new NotSupportedException(
+                $"Unsupported Terminal operational schema version {existingVersion}; maximum supported is {SchemaVersion}.");
+        }
+
+        await BeginImmediateAsync(connection, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await CreateCoreSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
+            await CreateLearningSchemaAsync(connection, cancellationToken).ConfigureAwait(false);
+
+            var writeVersion = connection.CreateCommand();
+            writeVersion.CommandText = existingVersion == 0
+                ? "INSERT INTO schema_info(singleton, version) VALUES (1, $version);"
+                : "UPDATE schema_info SET version = $version WHERE singleton = 1;";
+            writeVersion.Parameters.AddWithValue("$version", SchemaVersion);
+            await writeVersion.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+
+            await CommitAsync(connection, cancellationToken).ConfigureAwait(false);
+        }
+        catch
+        {
+            await RollbackQuietlyAsync(connection, cancellationToken).ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private static async Task CreateCoreSchemaAsync(
         SqliteConnection connection,
         CancellationToken cancellationToken)
     {
         var command = connection.CreateCommand();
         command.CommandText = """
-            CREATE TABLE IF NOT EXISTS schema_info (
-                singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
-                version INTEGER NOT NULL CHECK (version > 0)
-            ) STRICT;
-
-            INSERT OR IGNORE INTO schema_info(singleton, version) VALUES (1, 1);
-
             CREATE TABLE IF NOT EXISTS actions (
                 action_id TEXT PRIMARY KEY NOT NULL,
                 action_hash TEXT NOT NULL CHECK (length(action_hash) = 64),
@@ -193,7 +233,58 @@ public sealed class SqliteOperationalStore : IAsyncDisposable
                 FOREIGN KEY (transaction_id) REFERENCES transactions(transaction_id) ON DELETE CASCADE
             ) STRICT;
             """;
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
 
+    private static async Task CreateLearningSchemaAsync(
+        SqliteConnection connection,
+        CancellationToken cancellationToken)
+    {
+        var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS system_facts (
+                fact_key TEXT PRIMARY KEY NOT NULL,
+                subject_json TEXT NOT NULL,
+                fact_value TEXT NOT NULL,
+                provenance_json TEXT NOT NULL,
+                observed_at_utc TEXT NOT NULL,
+                max_age_ticks INTEGER NOT NULL CHECK (max_age_ticks > 0),
+                generation INTEGER NOT NULL CHECK (generation > 0),
+                invalidated INTEGER NOT NULL DEFAULT 0 CHECK (invalidated IN (0, 1))
+            ) STRICT;
+
+            CREATE TABLE IF NOT EXISTS system_fact_dependencies (
+                fact_key TEXT NOT NULL,
+                dependency_key TEXT NOT NULL,
+                PRIMARY KEY (fact_key, dependency_key),
+                FOREIGN KEY (fact_key) REFERENCES system_facts(fact_key) ON DELETE CASCADE
+            ) STRICT;
+
+            CREATE INDEX IF NOT EXISTS ix_system_fact_dependencies_dependency
+                ON system_fact_dependencies(dependency_key);
+
+            CREATE TABLE IF NOT EXISTS learned_knowledge (
+                knowledge_id TEXT PRIMARY KEY NOT NULL,
+                kind TEXT NOT NULL,
+                trigger_signature TEXT NOT NULL,
+                content TEXT NOT NULL,
+                source_candidate_id TEXT NOT NULL,
+                trust_class TEXT NOT NULL CHECK (trust_class = 'Verified'),
+                promoted_at_utc TEXT NOT NULL
+            ) STRICT;
+
+            CREATE INDEX IF NOT EXISTS ix_learned_knowledge_trigger
+                ON learned_knowledge(trigger_signature, promoted_at_utc);
+
+            CREATE TABLE IF NOT EXISTS learned_knowledge_evidence (
+                knowledge_id TEXT NOT NULL,
+                ordinal INTEGER NOT NULL CHECK (ordinal >= 0),
+                source TEXT NOT NULL,
+                source_class TEXT NOT NULL,
+                PRIMARY KEY (knowledge_id, ordinal),
+                FOREIGN KEY (knowledge_id) REFERENCES learned_knowledge(knowledge_id) ON DELETE CASCADE
+            ) STRICT;
+            """;
         await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
     }
 
@@ -214,6 +305,33 @@ public sealed class SqliteOperationalStore : IAsyncDisposable
         if (actualVersion != SchemaVersion)
         {
             throw new NotSupportedException($"Unsupported Terminal operational schema version {actualVersion}; expected {SchemaVersion}.");
+        }
+    }
+
+    private static async Task BeginImmediateAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        var command = connection.CreateCommand();
+        command.CommandText = "BEGIN IMMEDIATE;";
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task CommitAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        var command = connection.CreateCommand();
+        command.CommandText = "COMMIT;";
+        await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task RollbackQuietlyAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var command = connection.CreateCommand();
+            command.CommandText = "ROLLBACK;";
+            await command.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (SqliteException)
+        {
         }
     }
 }
