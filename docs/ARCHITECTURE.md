@@ -217,7 +217,6 @@ raw external output
 Raw external output is never automatically durable truth.
 
 ---
-
 # 2. Planning and intelligence
 
 Resolution order:
@@ -438,7 +437,6 @@ Privacy is another capability using normal policy/actions.
 - network/egress restrictions are explicit policy state and tested for leaks.
 
 ## Updates and maintenance
-
 - signed/fresh update metadata using TUF-style rollback/freeze-resistant design principles;
 - stage new version separately;
 - verify integrity/provenance/freshness;
@@ -623,3 +621,132 @@ Winner rule:
 GitHub CI can prove repository-level properties. It cannot alone prove Terminal works on the target machine.
 
 A release claim requires the real Windows 11 Home + WSL2 qualification matrix to pass.
+
+---
+
+# 10. Future direction — INVERTED integration and mission-scoped autonomy
+
+## Status
+
+This section is a **direction marker, not an implemented behavior change**.
+
+Terminal Command development should remain frozen at its current proven foundation until INVERTED has completed enough of its causal control/intelligence program to show what planning, routing, information shaping, deterministic assistance, recovery, model escalation, and verification machinery actually deserves to survive.
+
+Do not independently finalize Terminal's higher intelligence/planning layer while INVERTED is still measuring those questions. The intended sequence is:
+
+```text
+INVERTED causal program
+Harvest D
+  ↓
+post-D3 evidence deepening
+  ↓
+Test 5
+  ↓
+Harvest E
+  ↓
+Test 6
+  ↓
+proven control/intelligence architecture
+  ↓
+Terminal Command integration/redesign
+```
+
+## Intended operator experience
+
+The user should normally specify **WHAT must be accomplished and WHERE the mission is allowed to operate**, not write every shell command or tool invocation.
+
+Canonical interaction:
+
+```text
+MISSION
+  + TARGET
+  + SCOPE
+  + GOAL / PRIORITIES
+  + EXPLICIT EXCLUSIONS
+        ↓
+resolve and bind exact target identity
+        ↓
+INVERTED-derived control/intelligence layer
+        ↓
+plan / choose tools / generate commands / sequence work
+        ↓
+Terminal immutable Action + execution broker
+        ↓
+Windows / WSL / disposable tools
+        ↓
+evidence
+        ↓
+verification / recovery / adaptation
+        ↓
+mission completion or explicit unresolved state
+```
+
+Exact commands remain available as an operator override, but they are not the required interface for ordinary autonomous work.
+
+## Mission-scoped security model
+
+For explicitly authorized engineering and security-assurance work, the primary human authorization boundary should be the **task, target, and scope**, rather than a technique-by-technique command allowlist.
+
+The design objective is:
+
+> Maximum operational freedom inside an explicitly authorized mission boundary; zero silent expansion beyond that boundary.
+
+Examples of mission-bound fields include:
+
+- mission ID and objective;
+- typed target `ResourceRef` set;
+- environment: local, lab, client, production, remote, disposable;
+- included hosts, domains, applications, repositories, processes, files, APIs, networks, or devices;
+- explicit exclusions;
+- time/resource boundary;
+- credentials/identity context when applicable;
+- allowed data-egress boundary;
+- completion/postconditions;
+- mission stop conditions.
+
+Once a mission is established, the system may determine the necessary implementation steps—tool selection, command syntax, ordering, evidence acquisition, decomposition, safe retries, alternative techniques, and recovery—without requiring the operator to pre-author every command.
+
+Every generated Action must still be internally bound to the mission, exact target identity, current scope, provenance, and current machine evidence. Immutable Action identity remains valuable for replay protection, auditability, target revalidation, evidence lineage, recovery, and prevention of scope drift even when the operator is not manually approving each command.
+
+A generated Action must fail closed when it cannot prove that it belongs to the active mission or remains within the authorized target/scope. Discovery of a neighboring host, domain, account, process, repository, API, or system does not itself expand authorization.
+
+## INVERTED / Terminal responsibility split
+
+The final split must be decided from INVERTED evidence rather than assumed in advance, but the current direction is:
+
+**INVERTED-derived control/intelligence:**
+
+- information shaping and context selection;
+- reasoning assistance;
+- task decomposition and planning where proven useful;
+- model routing/escalation;
+- failure detection and diagnosis;
+- adaptive strategy selection;
+- recovery decision support;
+- causal evidence use;
+- intelligence/model-size substitution mechanisms proven by testing.
+
+**Terminal Command execution substrate:**
+
+- typed target resolution;
+- mission/scope binding;
+- immutable Actions and plans;
+- Windows authority boundary;
+- execution broker;
+- Windows Job Object / ConPTY execution;
+- WSL transport and Linux execution;
+- disposable isolation adapters;
+- security/engineering tool adapters;
+- durable journals and provenance;
+- evidence capture/normalization;
+- target revalidation;
+- transaction/recovery execution;
+- independent verification primitives.
+
+This division is not permission for duplicated brains. If INVERTED proves a superior control mechanism, Terminal should consume or adapt it rather than rebuilding a competing planner, router, memory system, recovery intelligence layer, or model policy.
+
+## Preservation rule
+
+Until INVERTED reaches its prove/kill/improve closure, preserve Terminal's current green execution foundation and this direction. Avoid speculative implementation of the upper intelligence layer that would later need to be replaced.
+
+When INVERTED closes, redesign Terminal against the measured results and admit only the smallest integration that preserves the highest verified capability.
