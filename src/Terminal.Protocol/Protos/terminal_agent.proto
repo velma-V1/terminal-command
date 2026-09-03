@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package terminal.v3;
+option csharp_namespace = "Terminal.Protocol.Messages";
+
+message HelloRequest {
+  uint32 protocol_major = 1;
+  uint32 protocol_minor = 2;
+  string client = 3;
+}
+
+message HelloResponse {
+  uint32 protocol_major = 1;
+  uint32 protocol_minor = 2;
+  string agent = 3;
+  bool ready = 4;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+  bool healthy = 1;
+  string status = 2;
+}
+
+message CancelRequest {
+  string execution_id = 1;
+}
+
+message CancelResponse {
+  bool accepted = 1;
+  string reason = 2;
+}
+
+message ErrorResponse {
+  string code = 1;
+  string message = 2;
+}

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Terminal.Core/Terminal.Core.csproj" />
+    <ProjectReference Include="../Terminal.Execution/Terminal.Execution.csproj" />
+    <ProjectReference Include="../Terminal.Protocol/Terminal.Protocol.csproj" />
+  </ItemGroup>
+</Project>
